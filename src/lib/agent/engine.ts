@@ -7,8 +7,12 @@ import type { AgentReply, Emit, JsonObject, ModelMessage, Session, ToolDefinitio
 import { mcpToolName, type OrderingProvider } from "../providers/types";
 import type { ModelClient } from "./model";
 import { systemPrompt } from "./prompt";
+import { UtteranceStream } from "./utterances";
+import type { AgentTrace } from "./trace";
 
-const replySchema = z.object({ text: z.string().min(1).max(900), expression: z.enum(["neutral", "happy", "thinking", "smug", "surprised", "sorry"]), choices: z.array(z.string().min(1).max(65)).max(3) }).strict();
+const expressionSchema = z.enum(["neutral", "happy", "thinking", "smug", "surprised", "sorry"]);
+const replySchema = z.object({ expression: expressionSchema, text: z.string().min(1).max(900), choices: z.array(z.string().min(1).max(65)).max(3) }).strict();
+const narrationSchema = z.object({ expression: expressionSchema, text: z.string().min(1).max(80) }).strict();
 const tool = (name: string, description: string, schema: JsonObject): ToolDefinition => ({ type: "function", function: { name, description, parameters: schema } });
 const locals = [
   tool("set_order_context", "设置已查询、已由客人选择的就餐方式、门店、地址、取餐方式或餐具备注。变更门店/方式/地址会清空旧餐品。", z.toJSONSchema(contextSchema) as JsonObject),
@@ -16,6 +20,7 @@ const locals = [
   tool("quote_order", "按程序当前点单调用官方算价，更新点单夹；所有价格都须以此结果为准。", { type: "object", properties: {}, additionalProperties: false }),
   tool("search_menu", "从已查询的本店菜单查找餐品，不发新网络请求。maxPriceYuan 仅按菜单参考价筛选，最终价格需正式计价。", { type: "object", properties: { query: { type: "string" }, maxPriceYuan: { type: "number" } }, additionalProperties: false }),
   tool("reply_to_guest", "结束本轮并让鲸鱼娘说话、切换表情、提供至多3个快捷回应。先读完所有依赖工具结果，再单独调用。", z.toJSONSchema(replySchema) as JsonObject),
+  tool("narrate_to_guest", "工具操作前的简短接待对白和全角括号动作描写，不结束本轮。先调用本工具，再在同一次回复中调用相关业务工具；每轮最多3次。尚未查询不能声称已有结果。", z.toJSONSchema(narrationSchema) as JsonObject),
 ];
 const statusText: Record<string, string> = {
   query_nearby_stores: "让我找找附近的餐厅…", delivery_query_addresses: "正在查看配送地址…", delivery_query_stores: "正在确认可配送的餐厅…",
@@ -105,16 +110,24 @@ function recentOrderIds(session: Session) {
   for (const m of session.messages) if (m.role === "tool" && m.content) { try { walk(JSON.parse(m.content), entry => { if (entry.orderId) ids.push(String(entry.orderId)); }); } catch {} }
   return ids;
 }
-export async function runAgent(session: Session, provider: OrderingProvider, model: ModelClient, message: string, emit: Emit, signal?: AbortSignal): Promise<AgentReply> {
+export async function runAgent(session: Session, provider: OrderingProvider, model: ModelClient, message: string, emit: Emit, signal?: AbortSignal, trace?: AgentTrace): Promise<AgentReply> {
   if (session.mode !== provider.mode) throw new MgoError("MODE_MISMATCH", "体验模式与点餐服务不匹配，已停止操作。", 500);
-  const definitions = [...await provider.listTools(), ...locals];
+  const orderingDefinitions = await provider.listTools();
+  const remoteNames = new Set(orderingDefinitions.map(def => def.function.name));
+  const definitions = [...orderingDefinitions, ...locals];
   const available = new Set(definitions.map(def => def.function.name));
   session.messages.push({ role: "user", content: message });
-  let toolCount = 0;
+  let toolCount = 0, narrationCount = 0, hasNarration = false;
   const messages: ModelMessage[] = [{ role: "system", content: systemPrompt(session) }, ...session.messages];
   for (let turn = 0; turn < 8; turn++) {
     if (signal?.aborted) throw new MgoError("TIMEOUT", "这次处理时间有点久，点单内容已保留。", 504);
-    const response = await model.complete(messages, definitions, signal);
+    const utterances = new UtteranceStream(emit, 16 - toolCount, 3 - narrationCount, !!(session.quote && session.draft.fulfillment === "pickup" && !session.draft.takeWayCode), trace);
+    const activeDefinitions = narrationCount >= 3 ? definitions.filter(def => def.function.name !== "narrate_to_guest") : definitions;
+    let response: ModelMessage;
+    try {
+      const generate = () => model.complete(messages, activeDefinitions, signal, utterances.delta);
+      response = await (trace ? trace.model(generate) : generate());
+    } catch (error) { utterances.abortOpen(); throw error; }
     if (!response.tool_calls?.length) {
       messages.push({ role: "system", content: "请调用 reply_to_guest 输出结构化回复；需要操作时先完成工具，不能只输出普通文本。" });
       continue;
@@ -122,18 +135,27 @@ export async function runAgent(session: Session, provider: OrderingProvider, mod
     messages.push(response); session.messages.push(response);
     const calls = response.tool_calls;
     let terminal: AgentReply | null = null;
-    for (const call of calls) {
+    // Deliver the model's process dialogue before any business calls in the same batch.
+    const ordered = calls.map((call, index) => ({ call, index })).sort((a, b) => Number(b.call.function.name === "narrate_to_guest") - Number(a.call.function.name === "narrate_to_guest"));
+    for (const { index, call } of ordered) {
       if (++toolCount > 16) {
         const skipped: ModelMessage = { role: "tool", tool_call_id: call.id, content: JSON.stringify({ error: "TOOL_LIMIT", message: "本轮工具调用已达上限，请下一轮继续。" }) };
         messages.push(skipped); session.messages.push(skipped); continue;
       }
       const name = call.function.name;
+      const started = performance.now();
       let value: unknown;
       try {
         if (!available.has(name)) throw new MgoError("TOOL_NOT_ALLOWED", "工具不在当前允许范围内。");
         const args = object(JSON.parse(call.function.arguments));
-        if (name === "reply_to_guest") {
-          if (calls.length !== 1) value = { error: "请先读取同轮其他工具结果，然后单独调用 reply_to_guest。" };
+        if (!hasNarration && (remoteNames.has(name) || name === "quote_order")) throw new MgoError("PROCESS_REPLY_REQUIRED", "尚未执行查询。请先调用 narrate_to_guest 给客人一句简短回应和括号动作，再在同一次回复中调用这项业务工具。");
+        if (name === "narrate_to_guest") {
+          if (narrationCount >= 3) throw new MgoError("NARRATION_LIMIT", "本轮过程回应已足够，请继续实际操作或结束回复。");
+          narrationCount++; const narration = narrationSchema.parse(args);
+          hasNarration = true;
+          utterances.commit(index, { ...narration, choices: [] }, "progress"); value = { delivered: true };
+        } else if (name === "reply_to_guest") {
+          if (calls.length !== 1) { utterances.abort(index); value = { error: "请先读取同轮其他工具结果，然后单独调用 reply_to_guest。" }; }
           else {
             terminal = replySchema.parse(args);
             if (session.quote && session.draft.fulfillment === "pickup" && !session.draft.takeWayCode && terminal.choices.some(choice => choice.includes("确认下单"))) {
@@ -159,23 +181,31 @@ export async function runAgent(session: Session, provider: OrderingProvider, mod
             }
             value = ingest(session, native, await provider.callTool(native, prepared, signal), prepared);
           }
+          if (["set_order_context", "set_cart", "quote_order"].includes(name)) emit({ type: "state", session });
         }
       } catch (error) {
+        utterances.abort(index);
         const mapped = error instanceof z.ZodError ? new MgoError("INVALID_ARGUMENTS", "工具参数格式不正确，请按 Schema 修正。") : publicError(error);
         value = { error: mapped.code, message: mapped.message };
       }
+      trace?.tool(available.has(name) ? name : "unknown_tool", started);
       const result: ModelMessage = { role: "tool", tool_call_id: call.id, content: clipJson(value, name === "query_meal_detail" ? 42000 : 20000) };
       messages.push(result); session.messages.push(result);
     }
     session.updatedAt = new Date().toISOString();
     if (terminal) {
-      compactHistory(session); emit({ type: "state", session }); emit({ type: "reply", reply: terminal }); return terminal;
+      compactHistory(session); emit({ type: "state", session });
+      const utteranceId = utterances.commit(0, terminal, "final");
+      utterances.abortOpen(); emit({ type: "reply", reply: terminal, utteranceId }); return terminal;
     }
+    utterances.abortOpen();
     if (toolCount >= 16) break;
   }
   // Retain only complete user/assistant/tool sequences, even on a bounded-loop exit.
   const fallback: AgentReply = { text: "这次要核对的内容有一点多，先把已整理的点单留在这里。客人可以继续告诉我下一步，或者让我再核一下价格。", expression: "thinking", choices: ["看看现在点了什么", "再核一下价格"] };
-  compactHistory(session); emit({ type: "state", session }); emit({ type: "reply", reply: fallback }); return fallback;
+  compactHistory(session); emit({ type: "state", session });
+  const utteranceId = new UtteranceStream(emit, 1, 0, false, trace).commit(0, fallback, "final");
+  emit({ type: "reply", reply: fallback, utteranceId }); return fallback;
 }
 function compactHistory(session: Session) {
   if (session.messages.length <= 48) return;

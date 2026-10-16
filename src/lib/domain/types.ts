@@ -81,9 +81,12 @@ export interface Session {
   updatedAt: string;
 }
 export type StreamEvent =
+  | { type: "utterance_start"; utteranceId: string; phase: "progress" | "final"; expression: Expression }
+  | { type: "utterance_delta"; utteranceId: string; text: string }
+  | { type: "utterance_end"; utteranceId: string; reply: AgentReply; interrupted?: boolean }
   | { type: "status"; text: string }
   | { type: "state"; session: Session }
-  | { type: "reply"; reply: AgentReply }
+  | { type: "reply"; reply: AgentReply; utteranceId?: string }
   | { type: "error"; code: string; message: string }
   | { type: "done" };
 export type Emit = (event: StreamEvent) => void;

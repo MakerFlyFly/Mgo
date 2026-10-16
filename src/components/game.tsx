@@ -8,6 +8,9 @@ import { OrderSheet } from "./order-sheet";
 import { EntranceScene, useEntrance } from "./entrance";
 import { useGameAudio } from "./use-game-audio";
 import { characterArt } from "@/lib/character-art";
+import { useDialogue } from "./use-dialogue";
+import { stageParts } from "@/lib/dialogue/playback";
+import { sseData } from "@/lib/streaming/sse";
 
 type Config = { mode: "demo" | "live"; model: string; deepseekConfigured: boolean; mcdConfigured: boolean; requiresVisitorKey: boolean };
 type Line = { who: "guest" | "whale"; text: string };
@@ -18,7 +21,7 @@ export function Game() {
   const audio = useGameAudio();
   const entrance = useEntrance(audio.unlock);
   const [config, setConfig] = useState<Config | null>(null), [session, setSession] = useState<Session | null>(null);
-  const [reply, setReply] = useState<AgentReply>(greeting), [shown, setShown] = useState("");
+  const [reply, setReply] = useState<AgentReply>(greeting);
   const [text, setText] = useState(""), [busy, setBusy] = useState(false), [status, setStatus] = useState("");
   const [error, setError] = useState(""), [keyValue, setKeyValue] = useState(""), [keyDraft, setKeyDraft] = useState("");
   const [panel, setPanel] = useState<"settings" | "history" | "preferences" | null>(null);
@@ -26,19 +29,17 @@ export function Game() {
   const [history, setHistory] = useState<Line[]>([{ who: "whale", text: greeting.text }]);
   const [preferences, setPreferences] = useState<Preferences>(initialPreferences), [prefDraft, setPrefDraft] = useState<Preferences>(initialPreferences);
   const [remember, setRemember] = useState(false), [tapped, setTapped] = useState(false);
-  const sessionRef = useRef(session), busyRef = useRef(false), typingRef = useRef(false), quoteRef = useRef<string | null>(null);
+  const sessionRef = useRef(session), busyRef = useRef(false), quoteRef = useRef<string | null>(null), replyRef = useRef(reply);
   const requestAbort = useRef<AbortController | null>(null), inputRef = useRef<HTMLTextAreaElement>(null);
-  const typingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const dialogueRef = useRef<HTMLElement | null>(null);
-  const pendingReply = useRef<AgentReply | null>(null);
-  const characterExpression: Expression | "handoff" = handoff ? "handoff" : busy ? "thinking" : reply.expression;
+  const contentRef = useRef<HTMLDivElement | null>(null), followText = useRef(true);
+  const dialogue = useDialogue(entrance.stage === "counter", audio);
+  const hasShown = dialogue.lines.some(line => line.text);
+  const characterExpression: Expression | "handoff" = handoff ? "handoff" : busy && !hasShown ? "thinking" : dialogue.expression;
   useEffect(() => { sessionRef.current = session; }, [session]);
   const chime = audio.tap;
-  const stopTyping = useCallback(() => {
-    if (typingTimer.current) clearInterval(typingTimer.current);
-    typingTimer.current = null; typingRef.current = false; audio.stopSpeech();
-  }, [audio.stopSpeech]);
-  useEffect(() => { audio.allowSpeech(entrance.stage === "counter" && !busy && !panel); }, [entrance.stage, busy, panel, audio.allowSpeech]);
+  const showLocal = useCallback((next: AgentReply) => { replyRef.current = next; setReply(next); dialogue.replace(next); }, [dialogue.replace]);
+  useEffect(() => { audio.allowSpeech(entrance.stage === "counter" && !panel); }, [entrance.stage, panel, audio.allowSpeech]);
   useEffect(() => { if (entrance.stage === "counter") audio.tryResume(); }, [entrance.stage, audio.tryResume]);
   useEffect(() => {
     let alive = true;
@@ -46,28 +47,21 @@ export function Game() {
       if (!alive) return;
       if (configuration.error || state.error) throw new Error(configuration.error || state.error);
       setConfig(configuration); setSession(state.session);
+      quoteRef.current = state.session?.quote?.id || null;
       if (state.session?.draft.items.length || state.session?.attempt) setSheetOpen(true);
-      if (state.session?.attempt) setReply({ text: "客人回来啦！上次的点单夹还保留着，可以先查看订单，再继续聊。", expression: "happy", choices: ["看看订单进度"] });
-      else if (state.session?.draft.items.length) setReply({ text: "客人回来啦！上次整理的点单夹还在，订单尚未提交。可以先看看，想调整什么再告诉我就好。", expression: "neutral", choices: ["看看现在点了什么", "我想调整点单"] });
+      if (state.session?.attempt) showLocal({ text: "客人回来啦！上次的点单夹还保留着，可以先查看订单，再继续聊。", expression: "happy", choices: ["看看订单进度"] });
+      else if (state.session?.draft.items.length) showLocal({ text: "客人回来啦！上次整理的点单夹还在，订单尚未提交。可以先看看，想调整什么再告诉我就好。", expression: "neutral", choices: ["看看现在点了什么", "我想调整点单"] });
     }).catch(e => { if (alive) setError(e.message || "暂时无法连接柜台，请刷新重试。"); });
     try {
       const saved = localStorage.getItem("mgo.preferences.v1");
       if (saved) { const parsed = JSON.parse(saved); const tastes = Array.isArray(parsed.tastes) ? parsed.tastes.filter((t: string) => (tasteOptions as readonly string[]).includes(t)) : []; const next = { tastes, ...(typeof parsed.budget === "number" && parsed.budget >= 1 && parsed.budget <= 1000 ? { budget: parsed.budget } : {}) }; setPreferences(next); setPrefDraft(next); setRemember(true); }
     } catch { /* storage is optional */ }
     return () => { alive = false; requestAbort.current?.abort(); };
-  }, []);
+  }, [showLocal]);
   useEffect(() => {
-    if (entrance.stage !== "counter") { setShown(""); stopTyping(); return; }
-    let index = 0; setShown(""); typingRef.current = true;
-    const chars = Array.from(reply.text);
-    const timer = setInterval(() => {
-      const glyphs = chars.slice(index, index + 2).join(""); index += 2;
-      setShown(chars.slice(0, index).join("")); audio.speakGlyphs(glyphs, reply.expression);
-      if (index >= chars.length) { clearInterval(timer); typingRef.current = false; typingTimer.current = null; }
-    }, 25);
-    typingTimer.current = timer;
-    return () => { clearInterval(timer); stopTyping(); };
-  }, [reply, entrance.stage, audio.speakGlyphs, stopTyping]);
+    if (entrance.stage === "counter" && dialogue.empty()) dialogue.replace(replyRef.current);
+  }, [entrance.stage, dialogue.replace]);
+  useEffect(() => { if (followText.current && contentRef.current) contentRef.current.scrollTop = contentRef.current.scrollHeight; }, [dialogue.lines]);
   useEffect(() => {
     if (entrance.stage === "counter") dialogueRef.current?.focus({ preventScroll: true });
   }, [entrance.stage]);
@@ -78,15 +72,18 @@ export function Game() {
       if (event.session.quote && event.session.quote.id !== quoteRef.current) { quoteRef.current = event.session.quote.id; setSheetOpen(true); setHandoff(true); setTimeout(() => setHandoff(false), 1500); }
       if (event.session.attempt) setSheetOpen(true);
     }
-    if (event.type === "reply") { pendingReply.current = event.reply; setHistory(lines => [...lines, { who: "whale", text: event.reply.text }]); }
-    if (event.type === "error") { setError(event.message); if (event.code.startsWith("DEEPSEEK")) setPanel("settings"); }
+    const received = dialogue.receive(event);
+    if (received.reply) { replyRef.current = received.reply; setReply(received.reply); }
+    if (received.record) setHistory(lines => [...lines, { who: "whale", text: received.record! }]);
+    if (event.type === "error") { dialogue.interrupt(); setReply(current => ({ ...current, choices: [] })); setError(event.message); if (event.code.startsWith("DEEPSEEK")) setPanel("settings"); }
   };
   const send = async (message: string, reset = false) => {
     if (entrance.stage !== "counter") return;
     if (busyRef.current || (!message.trim() && !reset)) return;
     if (!config) { setError("柜台还在连接，请稍等一下。"); return; }
     if (config.requiresVisitorKey && !keyValue && !reset) { setKeyDraft(""); setPanel("settings"); return; }
-    stopTyping(); setShown(reply.text); pendingReply.current = null;
+    dialogue.beginTurn(); followText.current = true;
+    setReply(current => ({ ...current, choices: [] }));
     busyRef.current = true; setBusy(true); setError(""); setStatus("深度思考ing"); setText("");
     if (!reset) setHistory(lines => [...lines, { who: "guest", text: message }]);
     chime();
@@ -96,24 +93,26 @@ export function Game() {
       const response = await fetch("/api/chat", { method: "POST", signal: controller.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, requestId: crypto.randomUUID(), ...(current?.quote ? { quoteId: current.quote.id } : {}), ...(config.mode === "demo" ? { apiKey: keyValue, ...(current ? { demoState: current } : {}) } : {}), preferences, ...(reset ? { reset: true } : {}) }) });
       if (!response.ok) { const data = await response.json(); if (data.code?.startsWith("DEEPSEEK")) setPanel("settings"); throw new Error(data.error || "这次对话没有送达，请稍后再试。"); }
       if (!response.body) throw new Error("连接没有返回对话内容。");
-      const reader = response.body.getReader(), decoder = new TextDecoder(); let buffer = "";
-      while (true) { const { value, done } = await reader.read(); if (done) break; buffer += decoder.decode(value, { stream: true }); let end; while ((end = buffer.indexOf("\n\n")) >= 0) { const frame = buffer.slice(0, end); buffer = buffer.slice(end + 2); if (frame.startsWith("data: ")) applyEvent(JSON.parse(frame.slice(6))); } }
+      let completed = false;
+      for await (const data of sseData(response.body)) {
+        const event: StreamEvent = JSON.parse(data); applyEvent(event);
+        if (event.type === "done") { completed = true; break; }
+      }
+      if (!completed) throw new Error("对话连接中断了，已整理的点单仍保留。请再告诉我下一步。");
       if (reset) { setSheetOpen(false); quoteRef.current = null; }
-    } catch (e) { if (!(e instanceof DOMException && e.name === "AbortError")) setError(e instanceof Error ? e.message : "对话连接中断了。真实订单请先查询状态，再继续操作。"); }
+    } catch (e) { dialogue.interrupt(); setReply(current => ({ ...current, choices: [] })); if (!(e instanceof DOMException && e.name === "AbortError")) setError(e instanceof Error ? e.message : "对话连接中断了。真实订单请先查询状态，再继续操作。"); }
     finally {
-      // Start the visible reply and its voice together, after the stream releases the session lease.
-      if (pendingReply.current) setReply(pendingReply.current);
-      pendingReply.current = null;
+      // Text is already visible; only controls wait for the server to release its lease.
       busyRef.current = false; setBusy(false); setStatus(""); requestAbort.current = null;
     }
   };
   const tapCharacter = () => {
     if (entrance.stage !== "counter" || busyRef.current) return;
-    if (typingRef.current) { stopTyping(); setShown(reply.text); return; }
+    if (dialogue.buffered()) { dialogue.skipReceived(); return; }
     setTapped(true); setTimeout(() => setTapped(false), 600); chime();
     const lines = ["嗯？客人需要什么？我只是稍微摆了一下尾巴，可没有在摸鱼哦。", "点单夹、优惠券，还有……我的午饭。咳，前两样已经准备好啦。", "客人慢慢挑就好。今天也要好好吃饭，鲸鱼娘负责认真记单～"];
     const next: AgentReply = { text: lines[Math.floor(Math.random() * lines.length)], expression: "smug", choices: session?.draft.store ? ["看看现在点了什么", "帮我找找优惠"] : greeting.choices };
-    setReply(next); setHistory(old => [...old, { who: "whale", text: next.text }]);
+    showLocal(next); setHistory(old => [...old, { who: "whale", text: next.text }]);
   };
   const openPanel = (name: "settings" | "preferences" | "history") => { setKeyDraft(keyValue); setPrefDraft(preferences); setPanel(name); chime(); };
   const savePreferences = () => {
@@ -137,10 +136,13 @@ export function Game() {
     <button className={`character ${tapped ? "tapped" : ""}`} onClick={tapCharacter} aria-label="和鲸鱼娘打个招呼" title="点击，和鲸鱼娘打个招呼"><img src={characterArt(characterExpression)} alt="穿红黑白主题女仆制服的蓝发鲸鱼娘店员" draggable={false} fetchPriority="high"/></button>
     {sheetOpen && <OrderSheet session={session} onClose={() => setSheetOpen(false)}/>}
     <section className="dialogue" ref={dialogueRef} tabIndex={-1} aria-label="与鲸鱼娘对话"><div className="dialogue-name"><Icon name="whale" size={22}/><strong>鲸鱼娘</strong><span>当班店员</span></div>
-      <div className="dialogue-content" aria-live="polite" onClick={() => { stopTyping(); setShown(reply.text); }}><p>{busy ? <span className="working-text">{status}<span className="typing-dots">···</span></span> : shown}<span className="continue-mark" aria-hidden="true">◆</span></p></div>
+      <div className="dialogue-content" ref={contentRef} aria-live="polite" onScroll={e => { const node = e.currentTarget; followText.current = node.scrollHeight - node.scrollTop - node.clientHeight < 24; }} onClick={dialogue.skipReceived}>
+        {busy && !hasShown ? <p><span className="working-text">{status}<span className="typing-dots">···</span></span></p> : dialogue.lines.filter(line => line.text || line.interrupted).map(line => <p className="dialogue-line" key={line.id}>{stageParts(line.text).map((part, index) => <span className={part.action ? "stage-direction" : undefined} key={index}>{part.text}</span>)}{line.interrupted && <span className="utterance-interrupted">（回应中断）</span>}</p>)}
+        {!busy && hasShown && <span className="continue-mark" aria-hidden="true">◆</span>}
+      </div>
       {error && <div className="error-notice" role="alert">{error}<button aria-label="关闭错误提示" onClick={() => setError("")}><Icon name="close" size={14}/></button></div>}
       {session?.attempt?.paymentUrl && <a className="payment-link" href={session.attempt.paymentUrl} target="_blank" rel="noopener noreferrer">前往麦当劳官方支付<Icon name="external" size={14}/></a>}
-      <div className="dialogue-actions"><div className="quick-choices" aria-label="快捷回应">{reply.choices.map(choice => <button key={choice} onClick={() => void send(choice)} disabled={busy}>{choice}<Icon name="chevron" size={12}/></button>)}</div>{session?.attempt?.status === "created" && <button className="new-order" disabled={busy} onClick={() => void send("", true)}><Icon name="reset" size={14}/>再来一单</button>}</div>
+      <div className="dialogue-actions"><div className="quick-choices" aria-label="快捷回应">{!busy && reply.choices.map(choice => <button key={choice} onClick={() => void send(choice)}>{choice}<Icon name="chevron" size={12}/></button>)}</div>{session?.attempt?.status === "created" && <button className="new-order" disabled={busy} onClick={() => void send("", true)}><Icon name="reset" size={14}/>再来一单</button>}</div>
       <form className="chat-form" onSubmit={e => { e.preventDefault(); void send(text); }}><span className="input-decoration">✧</span><textarea ref={inputRef} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(text); } }} placeholder={busy ? "鲸鱼娘正在处理上一句话…" : "告诉鲸鱼娘，今天想吃点什么…"} aria-label="对鲸鱼娘说的话" rows={1} maxLength={1500} disabled={busy}/><span className="enter-hint">ENTER</span><button type="submit" className="send-button" aria-label="发送消息" disabled={busy || !text.trim()}><Icon name="send" size={20}/></button></form>
     </section>
     {panel === "settings" && <Modal title="把对话接上，快乐就开张。" subtitle="关于这间小小的云端餐厅" onClose={() => setPanel(null)}>

@@ -1,0 +1,278 @@
+{
+  "date": "2026-10-17",
+  "timezone": "Asia/Kuala_Lumpur",
+  "baseline": "f18d08e",
+  "samplesPerScenario": 3,
+  "mode": "live",
+  "realOrdersCreated": false,
+  "before": {
+    "mode": "live",
+    "model": "deepseek-flash",
+    "samples": 3,
+    "results": [
+      {
+        "scenario": "chat",
+        "sample": 1,
+        "firstTextMs": 17081,
+        "firstReplyMs": 17081,
+        "totalMs": 17082,
+        "progress": 0
+      },
+      {
+        "scenario": "chat",
+        "sample": 2,
+        "firstTextMs": 15926,
+        "firstReplyMs": 15926,
+        "totalMs": 15926,
+        "progress": 0
+      },
+      {
+        "scenario": "chat",
+        "sample": 3,
+        "firstTextMs": 18934,
+        "firstReplyMs": 18934,
+        "totalMs": 18934,
+        "progress": 0
+      },
+      {
+        "scenario": "find-store",
+        "sample": 1,
+        "firstTextMs": 19336,
+        "firstReplyMs": 19336,
+        "totalMs": 19336,
+        "progress": 0
+      },
+      {
+        "scenario": "find-store",
+        "sample": 2,
+        "firstTextMs": 18449,
+        "firstReplyMs": 18449,
+        "totalMs": 18449,
+        "progress": 0
+      },
+      {
+        "scenario": "find-store",
+        "sample": 3,
+        "firstTextMs": 14867,
+        "firstReplyMs": 14867,
+        "totalMs": 14867,
+        "progress": 0
+      }
+    ]
+  },
+  "after": {
+    "mode": "live",
+    "model": "deepseek-flash",
+    "samples": 3,
+    "results": [
+      {
+        "scenario": "chat",
+        "sample": 1,
+        "firstTextMs": 1187,
+        "firstReplyMs": 1646,
+        "totalMs": 1646,
+        "progress": 0
+      },
+      {
+        "scenario": "chat",
+        "sample": 2,
+        "firstTextMs": 731,
+        "firstReplyMs": 1118,
+        "totalMs": 1118,
+        "progress": 0
+      },
+      {
+        "scenario": "chat",
+        "sample": 3,
+        "firstTextMs": 954,
+        "firstReplyMs": 1432,
+        "totalMs": 1432,
+        "progress": 0
+      },
+      {
+        "scenario": "find-store",
+        "sample": 1,
+        "firstTextMs": 2145,
+        "firstReplyMs": 7685,
+        "totalMs": 7685,
+        "progress": 1
+      },
+      {
+        "scenario": "find-store",
+        "sample": 2,
+        "firstTextMs": 1788,
+        "firstReplyMs": 5442,
+        "totalMs": 5442,
+        "progress": 1
+      },
+      {
+        "scenario": "find-store",
+        "sample": 3,
+        "firstTextMs": 1200,
+        "firstReplyMs": 3765,
+        "totalMs": 3766,
+        "progress": 1
+      }
+    ]
+  },
+  "traces": [
+    {
+      "type": "mgo_timing",
+      "requestId": "a2b3a045-9ec1-4c90-991a-fe1ba1abebc1",
+      "mode": "live",
+      "firstTextMs": 1115,
+      "modelRequests": 1,
+      "modelMs": [
+        1551
+      ],
+      "mcpInitMs": [],
+      "tools": [
+        {
+          "name": "reply_to_guest",
+          "ms": 1
+        }
+      ],
+      "totalMs": 1574
+    },
+    {
+      "type": "mgo_timing",
+      "requestId": "4648aedd-2de7-4fea-ac2a-d518d51d81e8",
+      "mode": "live",
+      "firstTextMs": 726,
+      "modelRequests": 1,
+      "modelMs": [
+        1101
+      ],
+      "mcpInitMs": [],
+      "tools": [
+        {
+          "name": "reply_to_guest",
+          "ms": 0
+        }
+      ],
+      "totalMs": 1112
+    },
+    {
+      "type": "mgo_timing",
+      "requestId": "f0ff76a3-4df6-48df-af4b-b13728803ba6",
+      "mode": "live",
+      "firstTextMs": 951,
+      "modelRequests": 1,
+      "modelMs": [
+        1417
+      ],
+      "mcpInitMs": [],
+      "tools": [
+        {
+          "name": "reply_to_guest",
+          "ms": 0
+        }
+      ],
+      "totalMs": 1428
+    },
+    {
+      "type": "mgo_timing",
+      "requestId": "1a02a100-2201-4aac-9e74-ec678a7d4c1d",
+      "mode": "live",
+      "firstTextMs": 2141,
+      "modelRequests": 3,
+      "modelMs": [
+        1094,
+        1232,
+        1641
+      ],
+      "mcpInitMs": [
+        3085
+      ],
+      "tools": [
+        {
+          "name": "query_nearby_stores",
+          "ms": 0
+        },
+        {
+          "name": "narrate_to_guest",
+          "ms": 0
+        },
+        {
+          "name": "query_nearby_stores",
+          "ms": 3700
+        },
+        {
+          "name": "reply_to_guest",
+          "ms": 0
+        }
+      ],
+      "totalMs": 7680
+    },
+    {
+      "type": "mgo_timing",
+      "requestId": "77589459-b5bd-4482-b265-426284d59fcb",
+      "mode": "live",
+      "firstTextMs": 1784,
+      "modelRequests": 2,
+      "modelMs": [
+        2101,
+        1668
+      ],
+      "mcpInitMs": [],
+      "tools": [
+        {
+          "name": "narrate_to_guest",
+          "ms": 0
+        },
+        {
+          "name": "query_nearby_stores",
+          "ms": 1654
+        },
+        {
+          "name": "reply_to_guest",
+          "ms": 0
+        }
+      ],
+      "totalMs": 5437
+    },
+    {
+      "type": "mgo_timing",
+      "requestId": "e55a4626-5419-42ef-b0ee-7f0b168283f5",
+      "mode": "live",
+      "firstTextMs": 1197,
+      "modelRequests": 2,
+      "modelMs": [
+        1702,
+        1616
+      ],
+      "mcpInitMs": [],
+      "tools": [
+        {
+          "name": "narrate_to_guest",
+          "ms": 0
+        },
+        {
+          "name": "query_nearby_stores",
+          "ms": 431
+        },
+        {
+          "name": "reply_to_guest",
+          "ms": 0
+        }
+      ],
+      "totalMs": 3762
+    }
+  ],
+  "summary": [
+    {
+      "scenario": "chat",
+      "beforeFirstTextMs": 17081,
+      "afterFirstTextMs": 954,
+      "beforeTotalMs": 17082,
+      "afterTotalMs": 1432
+    },
+    {
+      "scenario": "find-store",
+      "beforeFirstTextMs": 18449,
+      "afterFirstTextMs": 1788,
+      "beforeTotalMs": 18449,
+      "afterTotalMs": 5442
+    }
+  ]
+}

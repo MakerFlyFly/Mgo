@@ -6,6 +6,7 @@ import { MockOrderingProvider } from "@/lib/providers/mock";
 import { MgoError } from "@/lib/domain/errors";
 function response(name: string, args: unknown): ModelMessage { return { role: "assistant", content: null, tool_calls: [{ id: crypto.randomUUID(), type: "function", function: { name, arguments: JSON.stringify(args) } }] }; }
 const finish = response("reply_to_guest", { text: "点单夹准备好啦，客人想在柜台取餐，还是打包带走？", expression: "happy", choices: ["柜台取餐", "打包带走"] });
+function narrated(message: ModelMessage) { message.tool_calls!.unshift(response("narrate_to_guest", { expression: "thinking", text: "我来查一下，客人稍等。\n（鲸鱼娘敲起柜台机。）" }).tool_calls![0]); return message; }
 class ScriptedModel implements ModelClient {
   calls = 0;
   constructor(private replies: ModelMessage[]) {}
@@ -15,7 +16,7 @@ describe("one agent, verified tools", () => {
   it("searches, selects, loads details, edits, quotes, and renders a structured reply", async () => {
     const session = newSession("demo"), provider = new MockOrderingProvider();
     const model = new ScriptedModel([
-      response("query_nearby_stores", { city: "上海市", keyword: "人民广场" }),
+      narrated(response("query_nearby_stores", { city: "上海市", keyword: "人民广场" })),
       response("set_order_context", { fulfillment: "pickup", storeCode: "DEMO-001" }),
       response("query_meals", {}), response("query_meal_detail", { code: "2002" }),
       response("set_cart", { items: [{ productCode: "2002", quantity: 1 }] }), response("quote_order", {}), finish,
@@ -53,7 +54,7 @@ describe("one agent, verified tools", () => {
     const session = newSession("demo"), provider = new MockOrderingProvider();
     const spy = vi.spyOn(provider, "callTool").mockRejectedValue(new MgoError("TIMEOUT", "response missing", 504));
     const args = { city: "上海市", contactName: "测试客人", phone: "13800000000", address: "演示花园1号楼", addressDetail: "101室" };
-    await runAgent(session, provider, new ScriptedModel([response("delivery_create_address", args), response("delivery_create_address", args), finish]), "新增地址：上海市，测试客人，13800000000，演示花园1号楼，101室", () => {});
+    await runAgent(session, provider, new ScriptedModel([narrated(response("delivery_create_address", args)), response("delivery_create_address", args), finish]), "新增地址：上海市，测试客人，13800000000，演示花园1号楼，101室", () => {});
     expect(spy).toHaveBeenCalledTimes(1); expect(session.addressWritePending).toBe(true);
   });
 });

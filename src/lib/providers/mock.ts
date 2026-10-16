@@ -1,29 +1,15 @@
 import { MgoError } from "../domain/errors";
 import type { JsonObject, ToolDefinition } from "../domain/types";
 import { DEMO_COUPONS, DEMO_MEALS, demoDetail } from "./fixtures";
-import { modelToolName, type OrderingProvider } from "./types";
+import { type OrderingProvider } from "./types";
+import { orderingTools } from "./definitions";
 
-const s = { type: "string" }, n = { type: "number" };
-const definitions: Record<string, [string, JsonObject, string[]?]> = {
-  "query-nearby-stores": ["查询自取门店。按城市和地标搜索，或查询收藏门店。", { searchType: { type: "integer", enum: [1, 2] }, city: s, keyword: s, beType: { type: "integer", enum: [1] } }],
-  "delivery-query-addresses": ["查询当前账户的已保存外送地址。", {}],
-  "delivery-create-address": ["仅在客人明确要求新增地址时使用。城市、姓名、电话、地址、门牌均必须由客人提供。", { city: s, contactName: s, phone: s, address: s, addressDetail: s }, ["city", "contactName", "phone", "address", "addressDetail"]],
-  "delivery-query-stores": ["查询配送到已选地址的门店。", { addressId: s, beType: { type: "integer", enum: [2] } }, ["addressId"]],
-  "query-meals": ["查询已选门店当前菜单。", { storeCode: s, beCode: s, orderType: n, beType: n }],
-  "query-meal-detail": ["查询餐品、套餐组成及可选特制。加进点单前先查询。", { code: s, storeCode: s, beCode: s, orderType: n, beType: n }, ["code"]],
-  "query-store-coupons": ["查询已选门店、就餐方式下可使用的优惠券。", { storeCode: s, beCode: s, orderType: n, beType: n }],
-  "query-my-coupons": ["查询已拥有的优惠券。优惠是否可用于当前门店仍需查询门店券。", {}],
-  "query-order": ["查询订单状态。", { orderId: s }, ["orderId"]],
-  "order-list": ["查询近期订单，用于协助核实提交状态。", {}],
-};
 
 export class MockOrderingProvider implements OrderingProvider {
   readonly mode = "demo" as const;
   constructor(private options: { priceDelta?: number; failCreate?: boolean } = {}) {}
   async listTools(): Promise<ToolDefinition[]> {
-    return Object.entries(definitions).map(([name, [description, properties, required]]) => ({
-      type: "function", function: { name: modelToolName(name), description, parameters: { type: "object", properties, ...(required ? { required } : {}), additionalProperties: false } },
-    }));
+    return orderingTools();
   }
   async callTool(name: string, args: JsonObject): Promise<unknown> {
     switch (name) {

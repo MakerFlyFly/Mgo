@@ -10,6 +10,7 @@ import { configuration } from "@/lib/server/config";
 import { checkOrigin, cookieHeader, noStoreHeaders, sessionCookie } from "@/lib/server/http";
 import { LiveRepository, MemoryJournal } from "@/lib/server/repository";
 import { chatRequestSchema } from "@/lib/server/validation";
+import { AgentTrace } from "@/lib/agent/trace";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 180;
@@ -17,6 +18,7 @@ export const maxDuration = 180;
 export async function POST(request: Request) {
   let repository: LiveRepository | undefined;
   let leasedId: string | undefined;
+  let trace: AgentTrace | undefined;
   try {
     checkOrigin(request);
     if (!request.headers.get("content-type")?.includes("application/json")) throw new MgoError("CONTENT_TYPE", "请使用 JSON 请求。", 415);
@@ -24,9 +26,10 @@ export async function POST(request: Request) {
     const rawBody = await request.text();
     if (rawBody.length > 1_500_000) throw new MgoError("TOO_LARGE", "这次对话内容太长，请开启新点单。", 413);
     const body = chatRequestSchema.parse(JSON.parse(rawBody)), config = configuration();
+    trace = new AgentTrace(body.requestId, config.mode);
     let session: Session;
     if (config.mode === "live") {
-      if (!config.mcdToken || !config.deepseekKey) throw new MgoError("LOCAL_CONFIGURATION", "请在本地配置 DEEPSEEK_API_KEY 与 MCD_MCP_TOKEN，然后重启应用。", 503);
+      if (!config.deepseekKey) throw new MgoError("LOCAL_CONFIGURATION", "请在本地配置 DEEPSEEK_API_KEY，然后重启应用。", 503);
       repository = await LiveRepository.open(config.dataDir, config.mcdToken);
       const id = sessionCookie(request);
       session = (id && repository.getSession(id)) || newSession("live");
@@ -44,12 +47,12 @@ export async function POST(request: Request) {
     if (!body.reset && !apiKey) throw new MgoError("DEEPSEEK_KEY_REQUIRED", "先在设置里填入你的 DeepSeek Key，就可以和我聊天啦。", 401);
     const journal = repository || new MemoryJournal();
     if (!repository && session.attempt) await journal.reserveAttempt(session.attempt);
-    const provider = config.mode === "live" ? new McdOrderingProvider(config.mcdToken) : new MockOrderingProvider();
+    const provider = config.mode === "live" ? new McdOrderingProvider(config.mcdToken, trace) : new MockOrderingProvider();
     const liveRepo = repository, lockId = leasedId;
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
-        const emit: Emit = event => { try { controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`)); } catch { /* finish persistence even after the browser disconnects */ } };
+        const emit: Emit = event => { if (event.type === "utterance_delta" && event.text || event.type === "reply") trace?.firstText(); try { controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`)); } catch { /* finish persistence even after the browser disconnects */ } };
         const timer = setInterval(() => { try { controller.enqueue(encoder.encode(": heartbeat\n\n")); } catch {} }, 12000);
         try {
           const signal = AbortSignal.timeout(120000);
@@ -69,7 +72,7 @@ export async function POST(request: Request) {
             emit({ type: "state", session }); emit({ type: "reply", reply });
           } else {
             emit({ type: "status", text: "深度思考ing" });
-            await runAgent(session, provider, new DeepSeekModel(apiKey, config.model), body.message, emit, signal);
+            await runAgent(session, provider, new DeepSeekModel(apiKey, config.model), body.message, emit, signal, trace);
           }
         } catch (error) {
           const e = publicError(error);
@@ -80,6 +83,7 @@ export async function POST(request: Request) {
           await provider.close();
           if (liveRepo && lockId) liveRepo.release(lockId);
           liveRepo?.close();
+          trace?.report();
           emit({ type: "done" }); try { controller.close(); } catch {}
         }
       },
@@ -90,6 +94,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if (repository && leasedId) repository.release(leasedId);
     repository?.close();
+    trace?.report();
     const e = error instanceof z.ZodError || error instanceof SyntaxError ? new MgoError("INVALID_REQUEST", "请求内容不完整或格式错误，请刷新后重试。") : publicError(error);
     return Response.json({ error: e.message, code: e.code }, { status: e.status, headers: noStoreHeaders });
   }
