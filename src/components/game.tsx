@@ -5,6 +5,7 @@ import { tasteOptions } from "@/lib/domain/preferences";
 import { Icon, type IconName } from "./icon";
 import { Modal } from "./modal";
 import { OrderSheet } from "./order-sheet";
+import { EntranceScene, useEntrance } from "./entrance";
 
 type Config = { mode: "demo" | "live"; model: string; deepseekConfigured: boolean; mcdConfigured: boolean; requiresVisitorKey: boolean };
 type Line = { who: "guest" | "whale"; text: string };
@@ -12,6 +13,7 @@ const greeting: AgentReply = { text: "欢迎光临云麦当劳～今天想吃点
 const initialPreferences: Preferences = { tastes: [] };
 
 export function Game() {
+  const entrance = useEntrance();
   const [config, setConfig] = useState<Config | null>(null), [session, setSession] = useState<Session | null>(null);
   const [reply, setReply] = useState<AgentReply>(greeting), [shown, setShown] = useState("");
   const [text, setText] = useState(""), [busy, setBusy] = useState(false), [status, setStatus] = useState("");
@@ -20,10 +22,11 @@ export function Game() {
   const [sheetOpen, setSheetOpen] = useState(false), [sound, setSound] = useState(false), [handoff, setHandoff] = useState(false);
   const [history, setHistory] = useState<Line[]>([{ who: "whale", text: greeting.text }]);
   const [preferences, setPreferences] = useState<Preferences>(initialPreferences), [prefDraft, setPrefDraft] = useState<Preferences>(initialPreferences);
-  const [remember, setRemember] = useState(false), [clock, setClock] = useState("OPEN DAILY"), [tapped, setTapped] = useState(false);
+  const [remember, setRemember] = useState(false), [tapped, setTapped] = useState(false);
   const sessionRef = useRef(session), busyRef = useRef(false), soundRef = useRef(sound), typingRef = useRef(false), quoteRef = useRef<string | null>(null);
   const requestAbort = useRef<AbortController | null>(null), inputRef = useRef<HTMLTextAreaElement>(null);
   const typingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const dialogueRef = useRef<HTMLElement | null>(null);
   const characterExpression: Expression | "handoff" = handoff ? "handoff" : busy ? "thinking" : reply.expression;
   useEffect(() => { sessionRef.current = session; }, [session]);
   useEffect(() => { soundRef.current = sound; }, [sound]);
@@ -51,17 +54,19 @@ export function Game() {
       const saved = localStorage.getItem("mgo.preferences.v1");
       if (saved) { const parsed = JSON.parse(saved); const tastes = Array.isArray(parsed.tastes) ? parsed.tastes.filter((t: string) => (tasteOptions as readonly string[]).includes(t)) : []; const next = { tastes, ...(typeof parsed.budget === "number" && parsed.budget >= 1 && parsed.budget <= 1000 ? { budget: parsed.budget } : {}) }; setPreferences(next); setPrefDraft(next); setRemember(true); }
     } catch { /* storage is optional */ }
-    const updateClock = () => setClock(new Date().toLocaleTimeString("zh-CN", { timeZone: "Asia/Shanghai", hour: "2-digit", minute: "2-digit", hour12: false }) + " · 营业中");
-    updateClock(); const timer = setInterval(updateClock, 60000);
-    return () => { alive = false; clearInterval(timer); requestAbort.current?.abort(); };
+    return () => { alive = false; requestAbort.current?.abort(); };
   }, []);
   useEffect(() => {
+    if (entrance.stage !== "counter") { setShown(""); typingRef.current = false; return; }
     let index = 0; setShown(""); typingRef.current = true;
     const chars = Array.from(reply.text);
     const timer = setInterval(() => { index += 2; setShown(chars.slice(0, index).join("")); if (index >= chars.length) { clearInterval(timer); typingRef.current = false; typingTimer.current = null; } }, 25);
     typingTimer.current = timer;
     return () => { clearInterval(timer); typingTimer.current = null; };
-  }, [reply]);
+  }, [reply, entrance.stage]);
+  useEffect(() => {
+    if (entrance.stage === "counter") dialogueRef.current?.focus({ preventScroll: true });
+  }, [entrance.stage]);
   const applyEvent = (event: StreamEvent) => {
     if (event.type === "status") setStatus(event.text);
     if (event.type === "state") {
@@ -73,6 +78,7 @@ export function Game() {
     if (event.type === "error") { setError(event.message); if (event.code.startsWith("DEEPSEEK")) setPanel("settings"); }
   };
   const send = async (message: string, reset = false) => {
+    if (entrance.stage !== "counter") return;
     if (busyRef.current || (!message.trim() && !reset)) return;
     if (!config) { setError("柜台还在连接，请稍等一下。"); return; }
     if (config.requiresVisitorKey && !keyValue && !reset) { setKeyDraft(""); setPanel("settings"); return; }
@@ -92,7 +98,7 @@ export function Game() {
     finally { busyRef.current = false; setBusy(false); setStatus(""); requestAbort.current = null; }
   };
   const tapCharacter = () => {
-    if (busyRef.current) return;
+    if (entrance.stage !== "counter" || busyRef.current) return;
     if (typingRef.current) { if (typingTimer.current) clearInterval(typingTimer.current); typingTimer.current = null; typingRef.current = false; setShown(reply.text); return; }
     setTapped(true); setTimeout(() => setTapped(false), 600); chime();
     const lines = ["嗯？客人需要什么？我只是稍微摆了一下尾巴，可没有在摸鱼哦。", "点单夹、优惠券，还有……我的午饭。咳，前两样已经准备好啦。", "客人慢慢挑就好。今天也要好好吃饭，鲸鱼娘负责认真记单～"];
@@ -111,18 +117,17 @@ export function Game() {
     { icon: "heart", label: "口味偏好", action: () => openPanel("preferences") },
     { icon: "settings", label: "设置", action: () => openPanel("settings"), active: config?.requiresVisitorKey && !keyValue },
   ];
-  return <main className={`game ${sheetOpen ? "sheet-visible" : ""}`}>
+  return <main className={`game ${sheetOpen ? "sheet-visible" : ""}`} data-stage={entrance.stage} data-motion={entrance.reducedMotion ? "reduced" : "full"}>
+    <div className="counter-screen" aria-hidden={entrance.stage !== "counter"} inert={entrance.stage !== "counter"}>
     <div className="scene" aria-hidden="true"><div className="scene-image"/><div className="scene-warmth"/><div className="sun-dust dust-one"/><div className="sun-dust dust-two"/></div>
-    <header className="topbar"><a className="brand" href="/" aria-label="Mgo 首页"><span className="brand-mark"><Icon name="whale" size={30}/></span><span className="brand-word">Mgo<span>云麦当劳</span></span></a>
-      <div className={`mode-badge ${config?.mode === "live" ? "live" : ""}`}><span/>{config?.mode === "live" ? "个人柜台 · 真实点餐" : "云端体验 · 模拟点餐"}</div>
+    <header className="topbar">
       <nav className="top-controls" aria-label="游戏设置">{controls.map(control => <button key={control.label} className={`icon-button ${control.active ? "attention" : ""}`} title={control.label} aria-label={control.label} onClick={control.action}><Icon name={control.icon}/></button>)}</nav>
     </header>
-    <div className="welcome-note"><div className="open-tag"><span/>OPEN, WITH LOVE</div><h1>今天，也要<br/>好好吃饭<span>。</span></h1><p>一份刚刚好的快乐，<br/>从柜台前的「你好」开始。</p><span className="welcome-rule"/><small>{clock}</small></div>
     <button className={`character ${tapped ? "tapped" : ""}`} onClick={tapCharacter} aria-label="和鲸鱼娘打个招呼" title="点击，和鲸鱼娘打个招呼"><img src={`/art/character/${characterExpression}.webp`} alt="穿红黑白主题女仆制服的蓝发鲸鱼娘店员" draggable={false} fetchPriority="high"/></button>
     <div className="character-label"><span className="label-star">✦</span><span>鲸鱼娘<span>今日值班 · 大概很认真</span></span></div>
     <button className={`sheet-toggle ${sheetOpen ? "is-open" : ""}`} onClick={() => { setSheetOpen(v => !v); chime(); }} aria-label={sheetOpen ? "收起点单夹" : "查看点单夹"} aria-hidden={sheetOpen} tabIndex={sheetOpen ? -1 : 0}><Icon name="clipboard" size={23}/><span>点单夹</span><b>{session?.draft.items.reduce((sum, item) => sum + item.quantity, 0) || "○"}</b></button>
     {sheetOpen && <OrderSheet session={session} onClose={() => setSheetOpen(false)}/>}
-    <section className="dialogue" aria-label="与鲸鱼娘对话"><div className="dialogue-name"><Icon name="whale" size={22}/><strong>鲸鱼娘</strong><span>当班店员</span></div><div className="dialogue-meta"><span>{busy ? "正在认真工作中" : "YOUR LITTLE CLOUD COUNTER"}</span><span className={`connection-dot ${config && (!config.requiresVisitorKey || keyValue) ? "connected" : ""}`}/></div>
+    <section className="dialogue" ref={dialogueRef} tabIndex={-1} aria-label="与鲸鱼娘对话"><div className="dialogue-name"><Icon name="whale" size={22}/><strong>鲸鱼娘</strong><span>当班店员</span></div><div className="dialogue-meta"><span>{busy ? "正在认真工作中" : "YOUR LITTLE CLOUD COUNTER"}</span><span className={`connection-dot ${config && (!config.requiresVisitorKey || keyValue) ? "connected" : ""}`}/></div>
       <div className="dialogue-content" aria-live="polite" onClick={() => { if (typingTimer.current) clearInterval(typingTimer.current); typingTimer.current = null; typingRef.current = false; setShown(reply.text); }}><p>{busy ? <span className="working-text">{status}<span className="typing-dots">···</span></span> : shown}<span className="continue-mark" aria-hidden="true">◆</span></p></div>
       {error && <div className="error-notice" role="alert">{error}<button aria-label="关闭错误提示" onClick={() => setError("")}><Icon name="close" size={14}/></button></div>}
       {session?.attempt?.paymentUrl && <a className="payment-link" href={session.attempt.paymentUrl} target="_blank" rel="noopener noreferrer">前往麦当劳官方支付<Icon name="external" size={14}/></a>}
@@ -141,5 +146,8 @@ export function Game() {
       <label className="remember-toggle"><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}/><span>允许在这台浏览器记住这些偏好</span></label><p className="field-help">只保存这里的口味与预算（1–1000 元，可留空）。你在本轮对话里的要求会优先采用。</p><div className="modal-buttons"><button className="text-button" onClick={() => { try { localStorage.removeItem("mgo.preferences.v1"); } catch {} setPreferences(initialPreferences); setPrefDraft(initialPreferences); setRemember(false); }}>清除偏好</button><button className="primary-button" onClick={savePreferences} disabled={prefDraft.budget !== undefined && (!Number.isFinite(prefDraft.budget) || prefDraft.budget < 1 || prefDraft.budget > 1000)}>保存偏好<Icon name="check" size={16}/></button></div>
     </Modal>}
     {panel === "history" && <Modal title="柜台前的小小对话。" subtitle="当前页面的对话记录" onClose={() => setPanel(null)}><div className="history-list">{history.map((line, index) => <div key={index} className={`history-line ${line.who}`}><span>{line.who === "guest" ? "客人" : "鲸鱼娘"}</span><p>{line.text}</p></div>)}</div></Modal>}
+    </div>
+    {(entrance.stage === "exterior" || entrance.stage === "entering") && <EntranceScene stage={entrance.stage} ready={entrance.ready} loadError={entrance.loadError} onEnter={entrance.enter} onRetry={entrance.retry}/>}
+    {entrance.stage === "entering" && <div className="entrance-light" aria-hidden="true"/>}
   </main>;
 }

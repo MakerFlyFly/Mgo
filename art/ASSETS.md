@@ -9,12 +9,14 @@
 - 三个候选及完整中文提示词：`art/candidates/`、[prompts.json](candidates/prompts.json)。
 - 选定角色的表情、递道具姿势和柜台背景提示词：[production-prompts.json](production-prompts.json)。
 - 生成方式：内置 imagegen，以用户提供的参考图生成候选，再以选中的 C 图为角色一致性参考进行表情及姿势编辑。未使用外部 API CLI。
+- 门口外景：内置 imagegen，以现有柜台背景作为画风与建筑材质参考，生成无人暖阳门店；招牌和玻璃门位于中央，兼顾手机竖屏裁切。完整提示词见 [entrance-prompt.json](entrance-prompt.json)。
 
 ## 应用素材
 
 | 文件 | 用途 |
 |---|---|
 | `public/art/counter.webp` | 宽屏柜台背景 |
+| `public/art/entrance.webp` | 门口开始界面背景，中央构图支持竖屏裁切 |
 | `public/art/character/happy.webp` | 用户选定的 C 图，开心表情 |
 | `public/art/character/neutral.webp` | 平静欢迎表情 |
 | `public/art/character/thinking.webp` | 思考表情 |
