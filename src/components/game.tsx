@@ -82,7 +82,7 @@ export function Game() {
     if (busyRef.current || (!message.trim() && !reset)) return;
     if (!config) { setError("柜台还在连接，请稍等一下。"); return; }
     if (config.requiresVisitorKey && !keyValue && !reset) { setKeyDraft(""); setPanel("settings"); return; }
-    busyRef.current = true; setBusy(true); setError(""); setStatus("让我想一想，客人稍等一下…"); setText("");
+    busyRef.current = true; setBusy(true); setError(""); setStatus("深度思考ing"); setText("");
     if (!reset) setHistory(lines => [...lines, { who: "guest", text: message }]);
     chime();
     const controller = new AbortController(); requestAbort.current = controller;
@@ -111,30 +111,28 @@ export function Game() {
     try { if (remember) localStorage.setItem("mgo.preferences.v1", JSON.stringify(prefDraft)); else localStorage.removeItem("mgo.preferences.v1"); } catch { setError("浏览器未允许保存偏好，本次仍可使用。"); }
     setPanel(null);
   };
-  const controls: { icon: IconName; label: string; action: () => void; active?: boolean }[] = [
+  const controls: { icon: IconName; label: string; action: () => void; active?: boolean; expanded?: boolean; badge?: number }[] = [
     { icon: sound ? "sound" : "muted", label: sound ? "关闭提示音" : "开启提示音", action: () => setSound(v => !v) },
     { icon: "history", label: "对话记录", action: () => openPanel("history") },
     { icon: "heart", label: "口味偏好", action: () => openPanel("preferences") },
+    { icon: "clipboard", label: sheetOpen ? "收起点单夹" : "查看点单夹", action: () => { setSheetOpen(value => !value); chime(); }, expanded: sheetOpen, badge: session?.draft.items.reduce((sum, item) => sum + item.quantity, 0) || 0 },
     { icon: "settings", label: "设置", action: () => openPanel("settings"), active: config?.requiresVisitorKey && !keyValue },
   ];
   return <main className={`game ${sheetOpen ? "sheet-visible" : ""}`} data-stage={entrance.stage} data-motion={entrance.reducedMotion ? "reduced" : "full"}>
     <div className="counter-screen" aria-hidden={entrance.stage !== "counter"} inert={entrance.stage !== "counter"}>
     <div className="scene" aria-hidden="true"><div className="scene-image"/><div className="scene-warmth"/><div className="sun-dust dust-one"/><div className="sun-dust dust-two"/></div>
     <header className="topbar">
-      <nav className="top-controls" aria-label="游戏设置">{controls.map(control => <button key={control.label} className={`icon-button ${control.active ? "attention" : ""}`} title={control.label} aria-label={control.label} onClick={control.action}><Icon name={control.icon}/></button>)}</nav>
+      <nav className="top-controls" aria-label="游戏设置">{controls.map(control => <button key={control.icon === "sound" || control.icon === "muted" ? "audio" : control.icon} className={`icon-button ${control.active ? "attention" : ""} ${control.expanded ? "is-selected" : ""}`} title={control.label} aria-label={control.label} aria-expanded={control.expanded} aria-controls={control.icon === "clipboard" ? "order-sheet" : undefined} aria-description={control.badge ? `已选 ${control.badge} 件餐品` : undefined} onClick={control.action}><Icon name={control.icon}/>{!!control.badge && <span className="control-count" aria-hidden="true">{control.badge > 99 ? "99+" : control.badge}</span>}</button>)}</nav>
     </header>
     <button className={`character ${tapped ? "tapped" : ""}`} onClick={tapCharacter} aria-label="和鲸鱼娘打个招呼" title="点击，和鲸鱼娘打个招呼"><img src={`/art/character/${characterExpression}.webp`} alt="穿红黑白主题女仆制服的蓝发鲸鱼娘店员" draggable={false} fetchPriority="high"/></button>
-    <div className="character-label"><span className="label-star">✦</span><span>鲸鱼娘<span>今日值班 · 大概很认真</span></span></div>
-    <button className={`sheet-toggle ${sheetOpen ? "is-open" : ""}`} onClick={() => { setSheetOpen(v => !v); chime(); }} aria-label={sheetOpen ? "收起点单夹" : "查看点单夹"} aria-hidden={sheetOpen} tabIndex={sheetOpen ? -1 : 0}><Icon name="clipboard" size={23}/><span>点单夹</span><b>{session?.draft.items.reduce((sum, item) => sum + item.quantity, 0) || "○"}</b></button>
     {sheetOpen && <OrderSheet session={session} onClose={() => setSheetOpen(false)}/>}
-    <section className="dialogue" ref={dialogueRef} tabIndex={-1} aria-label="与鲸鱼娘对话"><div className="dialogue-name"><Icon name="whale" size={22}/><strong>鲸鱼娘</strong><span>当班店员</span></div><div className="dialogue-meta"><span>{busy ? "正在认真工作中" : "YOUR LITTLE CLOUD COUNTER"}</span><span className={`connection-dot ${config && (!config.requiresVisitorKey || keyValue) ? "connected" : ""}`}/></div>
+    <section className="dialogue" ref={dialogueRef} tabIndex={-1} aria-label="与鲸鱼娘对话"><div className="dialogue-name"><Icon name="whale" size={22}/><strong>鲸鱼娘</strong><span>当班店员</span></div>
       <div className="dialogue-content" aria-live="polite" onClick={() => { if (typingTimer.current) clearInterval(typingTimer.current); typingTimer.current = null; typingRef.current = false; setShown(reply.text); }}><p>{busy ? <span className="working-text">{status}<span className="typing-dots">···</span></span> : shown}<span className="continue-mark" aria-hidden="true">◆</span></p></div>
       {error && <div className="error-notice" role="alert">{error}<button aria-label="关闭错误提示" onClick={() => setError("")}><Icon name="close" size={14}/></button></div>}
       {session?.attempt?.paymentUrl && <a className="payment-link" href={session.attempt.paymentUrl} target="_blank" rel="noopener noreferrer">前往麦当劳官方支付<Icon name="external" size={14}/></a>}
       <div className="dialogue-actions"><div className="quick-choices" aria-label="快捷回应">{reply.choices.map(choice => <button key={choice} onClick={() => void send(choice)} disabled={busy}>{choice}<Icon name="chevron" size={12}/></button>)}</div>{session?.attempt?.status === "created" && <button className="new-order" disabled={busy} onClick={() => void send("", true)}><Icon name="reset" size={14}/>再来一单</button>}</div>
       <form className="chat-form" onSubmit={e => { e.preventDefault(); void send(text); }}><span className="input-decoration">✧</span><textarea ref={inputRef} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(text); } }} placeholder={busy ? "鲸鱼娘正在处理上一句话…" : "告诉鲸鱼娘，今天想吃点什么…"} aria-label="对鲸鱼娘说的话" rows={1} maxLength={1500} disabled={busy}/><span className="enter-hint">ENTER</span><button type="submit" className="send-button" aria-label="发送消息" disabled={busy || !text.trim()}><Icon name="send" size={20}/></button></form>
     </section>
-    <footer className="game-footer"><span>MGO · A LITTLE WHALE, A LITTLE JOY.</span><a href="https://github.com/MakerFlyFly/Mgo" target="_blank" rel="noopener noreferrer">开源作品 <Icon name="external" size={10}/></a><span>非官方社区创作</span></footer>
     {panel === "settings" && <Modal title="把对话接上，快乐就开张。" subtitle="关于这间小小的云端餐厅" onClose={() => setPanel(null)}>
       <div className="settings-mode"><Icon name="whale" size={28}/><div><strong>{config?.mode === "live" ? "你的个人点餐柜台" : "公开云端体验"}</strong><p>{config?.mode === "live" ? "连接你自己的麦当劳账户，确认后创建真实订单。" : "餐品、门店与订单均为模拟，不会扣款或配送。"}</p></div></div>
       {config?.requiresVisitorKey ? <><label className="field-label" htmlFor="deepseek-key">你的 DeepSeek API Key</label><div className="key-field"><Icon name="key" size={18}/><input id="deepseek-key" type="password" autoComplete="off" spellCheck={false} value={keyDraft} onChange={e => setKeyDraft(e.target.value)} placeholder="sk-…"/></div><p className="field-help">只在当前页面内存中使用。请求经本站服务端转发到 DeepSeek，不保存到浏览器或服务器；模型费用由你的账户承担。刷新页面后需重新填写。</p><div className="modal-buttons"><a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener noreferrer">获取 DeepSeek Key<Icon name="external" size={12}/></a><button className="primary-button" onClick={() => { setKeyValue(keyDraft.trim()); setKeyDraft(""); setPanel(null); setError(""); }} disabled={keyDraft.trim().length < 8}>连接对话<Icon name="chevron" size={16}/></button></div>{keyValue && <button className="text-button" onClick={() => { setKeyValue(""); setKeyDraft(""); }}>清除当前 Key</button>}</> : <><div className="config-check"><span>DeepSeek</span><b>{config?.deepseekConfigured ? "已配置" : "未配置"}</b></div><div className="config-check"><span>麦当劳 MCP</span><b>{config?.mcdConfigured ? "已配置" : "未配置"}</b></div><p className="field-help">请在项目根目录的 <code>.env.local</code>（Docker 使用 <code>.env</code>）中填写以下配置，保存后重启应用。设置页不会显示或修改凭据。</p><pre className="env-guide">APP_MODE=live{"\n"}DEEPSEEK_API_KEY=你的密钥{"\n"}DEEPSEEK_MODEL=deepseek-flash{"\n"}MCD_MCP_TOKEN=你的令牌</pre><a className="inline-link" href="https://open.mcd.cn/mcp" target="_blank" rel="noopener noreferrer">前往麦当劳 MCP 开放平台<Icon name="external" size={12}/></a></>}

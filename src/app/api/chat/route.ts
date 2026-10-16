@@ -68,7 +68,7 @@ export async function POST(request: Request) {
             session.messages.push({ role: "user", content: body.message }, { role: "assistant", content: reply.text });
             emit({ type: "state", session }); emit({ type: "reply", reply });
           } else {
-            emit({ type: "status", text: "让我想一想，客人稍等一下…" });
+            emit({ type: "status", text: "深度思考ing" });
             await runAgent(session, provider, new DeepSeekModel(apiKey, config.model), body.message, emit, signal);
           }
         } catch (error) {
