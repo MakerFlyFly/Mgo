@@ -1,0 +1,33 @@
+{
+  "tool": "Built-in imagegen",
+  "date": "2026-10-16",
+  "mode": "precise-object-edit",
+  "editTarget": "edit-target.png",
+  "selectedResult": "imagegen-hand-edit.png",
+  "prompt": "Use case: precise-object-edit. Input image 1 is a close-up EDIT TARGET from the approved Mgo character. It shows a slender adult anime girl's raised palm-up right hand, blue hair at the right and a burgundy/white sleeve cuff.\nRedraw ONLY the hand anatomy, removing the extra finger and tangled duplicate finger outlines.\nThe corrected hand MUST have exactly FIVE digits total: ONE thumb above, and EXACTLY FOUR long fingers pointing to the left. Make the four fingertip ends clearly distinct in a gentle small fan, with only THREE clean finger separation lines. The four long fingers should be lightly separated enough that their count is obvious. No fifth long finger, no duplicated tips, no extra nails. All digits attach naturally to the palm, with a smooth delicate wrist.\nKeep the same palm-up welcoming gesture, same wrist location and angle, same slender hand size, pale warm skin, delicate anime linework, soft shading, and cuff connection. Keep the burgundy cuff, white frills and blue hair unchanged and in the same positions.\nMaintain the exact 1024x1024 composition and alignment. Keep the hand fully within the original region. Genuine transparent RGBA background, no black or colored background, no halos, no text, no diagram labels, no extra objects. This is a polished anatomy repair, not a new character design.",
+  "initialAttempt": {
+    "prompt": "Use case: precise-object-edit.\nEdit target: input image 1, the approved Mgo game character sprite.\nCorrect ONLY the raised open hand on the LEFT side of the image (the girl's right hand), around x=75..230, y=335..430 on the original 1024x1536 canvas.\nThis hand currently has an extra finger/duplicate fingertip. Redraw its anatomy as EXACTLY FIVE digits: ONE natural thumb above the palm and FOUR slender fingers gently held together pointing left. Four fingers, not five fingers plus a thumb. Make the four distinct fingertips and their separation lines clearly readable, elegant and anatomically plausible. Preserve the existing palm-up welcoming gesture, wrist angle, overall hand scale, skin color, linework, shading, and the sleeve cuff attachment. Do not spread the fingers widely.\nKeep EVERYTHING ELSE unchanged: exact face, happy expression, hair, normal adult 18-year-old proportions, clothes, whale tail, other resting hand, shoes, framing and pose. Same 1024x1536 full-body canvas and exact alignment. No zoom or repositioning. No extra objects, no text or watermark. Preserve genuine transparent alpha background and delicate edges.\nOnly the raised hand and the minimum necessary wrist transition may change.",
+    "selected": false,
+    "reason": "Whole-sprite result did not resolve the fingertip ambiguity; replaced by a high-resolution local edit."
+  },
+  "preparation": {
+    "source": "../masters/character/happy.png",
+    "crop": {
+      "left": 55,
+      "top": 315,
+      "width": 220,
+      "height": 165
+    },
+    "resize": {
+      "width": 880,
+      "height": 660
+    },
+    "canvas": {
+      "width": 1024,
+      "height": 1024,
+      "left": 72,
+      "top": 182
+    }
+  },
+  "application": "scripts/rebuild-character-hands.mjs; scaled to match the original wrist, blended only within the bounded hand mask. The corrected hand covers the original fingertip outlines while source-over composition preserves the original soft transparent shadow. All pixels outside the mask stay byte-identical. Both handoff hands were audited and retained."
+}

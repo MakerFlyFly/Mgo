@@ -5,11 +5,13 @@ import { resolve, dirname, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const ids = ["counter", "entrance", ...["happy", "neutral", "thinking", "smug", "surprised", "sorry", "handoff"].map(id => `character/${id}`)];
+const characters = ["happy", "neutral", "thinking", "smug", "surprised", "sorry", "handoff"];
+const ids = ["counter", "entrance", ...characters.map(id => `character/${id}`), ...characters.map(id => `character/v2/${id}`)];
 for (const id of ids) {
   const original = resolve(root, "public", "art", `${id}.png`), master = resolve(root, "art", "masters", `${id}.png`), output = resolve(root, "public", "art", `${id}.webp`);
   if (!original.startsWith(resolve(root, "public", "art") + sep) || !master.startsWith(resolve(root, "art", "masters") + sep)) throw new Error("Unexpected asset path");
   await mkdir(dirname(master), { recursive: true });
+  await mkdir(dirname(output), { recursive: true });
   let hasOriginal = true;
   try { await access(original); } catch { hasOriginal = false; }
   if (hasOriginal) {

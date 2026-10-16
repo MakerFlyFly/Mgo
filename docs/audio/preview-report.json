@@ -1,0 +1,31 @@
+{
+  "duration": 6,
+  "sampleRate": 48000,
+  "channels": 1,
+  "version": "light-girl-v5",
+  "basePitchHz": 930,
+  "formantScale": 1.6,
+  "syllables": 17,
+  "peak": 0.064696,
+  "rms": 0.012699,
+  "clippedSamples": 0,
+  "minimumGap": 0.1,
+  "source": "Original synthesized vowels; same DSP, cadence and gain as the game",
+  "lines": [
+    {
+      "at": 0.08,
+      "mood": "happy",
+      "text": "欢迎光临云麦当劳～今天想吃点什么，客人？我刚好……咳，正在认真值班。点餐、挑优惠，或者先聊两句，都可以找我。"
+    },
+    {
+      "at": 2,
+      "mood": "thinking",
+      "text": "客人慢慢挑就好。我来看看今天的菜单，再核对一下价格。点单夹、优惠券，还有……我的午饭。咳，前两样已经准备好了。"
+    },
+    {
+      "at": 4,
+      "mood": "sorry",
+      "text": "嗯？客人需要什么？我只是稍微摆了一下尾巴，可没有在摸鱼哦。今天也要好好吃饭，鲸鱼娘会认真记单的，客人放心。"
+    }
+  ]
+}

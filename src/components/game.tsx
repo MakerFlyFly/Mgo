@@ -6,6 +6,8 @@ import { Icon, type IconName } from "./icon";
 import { Modal } from "./modal";
 import { OrderSheet } from "./order-sheet";
 import { EntranceScene, useEntrance } from "./entrance";
+import { useGameAudio } from "./use-game-audio";
+import { characterArt } from "@/lib/character-art";
 
 type Config = { mode: "demo" | "live"; model: string; deepseekConfigured: boolean; mcdConfigured: boolean; requiresVisitorKey: boolean };
 type Line = { who: "guest" | "whale"; text: string };
@@ -13,33 +15,31 @@ const greeting: AgentReply = { text: "欢迎光临云麦当劳～今天想吃点
 const initialPreferences: Preferences = { tastes: [] };
 
 export function Game() {
-  const entrance = useEntrance();
+  const audio = useGameAudio();
+  const entrance = useEntrance(audio.unlock);
   const [config, setConfig] = useState<Config | null>(null), [session, setSession] = useState<Session | null>(null);
   const [reply, setReply] = useState<AgentReply>(greeting), [shown, setShown] = useState("");
   const [text, setText] = useState(""), [busy, setBusy] = useState(false), [status, setStatus] = useState("");
   const [error, setError] = useState(""), [keyValue, setKeyValue] = useState(""), [keyDraft, setKeyDraft] = useState("");
   const [panel, setPanel] = useState<"settings" | "history" | "preferences" | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false), [sound, setSound] = useState(false), [handoff, setHandoff] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false), [handoff, setHandoff] = useState(false);
   const [history, setHistory] = useState<Line[]>([{ who: "whale", text: greeting.text }]);
   const [preferences, setPreferences] = useState<Preferences>(initialPreferences), [prefDraft, setPrefDraft] = useState<Preferences>(initialPreferences);
   const [remember, setRemember] = useState(false), [tapped, setTapped] = useState(false);
-  const sessionRef = useRef(session), busyRef = useRef(false), soundRef = useRef(sound), typingRef = useRef(false), quoteRef = useRef<string | null>(null);
+  const sessionRef = useRef(session), busyRef = useRef(false), typingRef = useRef(false), quoteRef = useRef<string | null>(null);
   const requestAbort = useRef<AbortController | null>(null), inputRef = useRef<HTMLTextAreaElement>(null);
   const typingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const dialogueRef = useRef<HTMLElement | null>(null);
+  const pendingReply = useRef<AgentReply | null>(null);
   const characterExpression: Expression | "handoff" = handoff ? "handoff" : busy ? "thinking" : reply.expression;
   useEffect(() => { sessionRef.current = session; }, [session]);
-  useEffect(() => { soundRef.current = sound; }, [sound]);
-  const chime = useCallback(() => {
-    if (!soundRef.current) return;
-    try {
-      const context = new AudioContext(), oscillator = context.createOscillator(), gain = context.createGain();
-      oscillator.type = "sine"; oscillator.frequency.setValueAtTime(660, context.currentTime); oscillator.frequency.exponentialRampToValueAtTime(880, context.currentTime + .12);
-      gain.gain.setValueAtTime(.035, context.currentTime); gain.gain.exponentialRampToValueAtTime(.001, context.currentTime + .24);
-      oscillator.connect(gain); gain.connect(context.destination); oscillator.start(); oscillator.stop(context.currentTime + .25);
-      oscillator.onended = () => { void context.close(); };
-    } catch { /* audio is optional */ }
-  }, []);
+  const chime = audio.tap;
+  const stopTyping = useCallback(() => {
+    if (typingTimer.current) clearInterval(typingTimer.current);
+    typingTimer.current = null; typingRef.current = false; audio.stopSpeech();
+  }, [audio.stopSpeech]);
+  useEffect(() => { audio.allowSpeech(entrance.stage === "counter" && !busy && !panel); }, [entrance.stage, busy, panel, audio.allowSpeech]);
+  useEffect(() => { if (entrance.stage === "counter") audio.tryResume(); }, [entrance.stage, audio.tryResume]);
   useEffect(() => {
     let alive = true;
     Promise.all([fetch("/api/config").then(r => r.json()), fetch("/api/session").then(r => r.json())]).then(([configuration, state]) => {
@@ -57,13 +57,17 @@ export function Game() {
     return () => { alive = false; requestAbort.current?.abort(); };
   }, []);
   useEffect(() => {
-    if (entrance.stage !== "counter") { setShown(""); typingRef.current = false; return; }
+    if (entrance.stage !== "counter") { setShown(""); stopTyping(); return; }
     let index = 0; setShown(""); typingRef.current = true;
     const chars = Array.from(reply.text);
-    const timer = setInterval(() => { index += 2; setShown(chars.slice(0, index).join("")); if (index >= chars.length) { clearInterval(timer); typingRef.current = false; typingTimer.current = null; } }, 25);
+    const timer = setInterval(() => {
+      const glyphs = chars.slice(index, index + 2).join(""); index += 2;
+      setShown(chars.slice(0, index).join("")); audio.speakGlyphs(glyphs, reply.expression);
+      if (index >= chars.length) { clearInterval(timer); typingRef.current = false; typingTimer.current = null; }
+    }, 25);
     typingTimer.current = timer;
-    return () => { clearInterval(timer); typingTimer.current = null; };
-  }, [reply, entrance.stage]);
+    return () => { clearInterval(timer); stopTyping(); };
+  }, [reply, entrance.stage, audio.speakGlyphs, stopTyping]);
   useEffect(() => {
     if (entrance.stage === "counter") dialogueRef.current?.focus({ preventScroll: true });
   }, [entrance.stage]);
@@ -74,7 +78,7 @@ export function Game() {
       if (event.session.quote && event.session.quote.id !== quoteRef.current) { quoteRef.current = event.session.quote.id; setSheetOpen(true); setHandoff(true); setTimeout(() => setHandoff(false), 1500); }
       if (event.session.attempt) setSheetOpen(true);
     }
-    if (event.type === "reply") { setReply(event.reply); setHistory(lines => [...lines, { who: "whale", text: event.reply.text }]); chime(); }
+    if (event.type === "reply") { pendingReply.current = event.reply; setHistory(lines => [...lines, { who: "whale", text: event.reply.text }]); }
     if (event.type === "error") { setError(event.message); if (event.code.startsWith("DEEPSEEK")) setPanel("settings"); }
   };
   const send = async (message: string, reset = false) => {
@@ -82,6 +86,7 @@ export function Game() {
     if (busyRef.current || (!message.trim() && !reset)) return;
     if (!config) { setError("柜台还在连接，请稍等一下。"); return; }
     if (config.requiresVisitorKey && !keyValue && !reset) { setKeyDraft(""); setPanel("settings"); return; }
+    stopTyping(); setShown(reply.text); pendingReply.current = null;
     busyRef.current = true; setBusy(true); setError(""); setStatus("深度思考ing"); setText("");
     if (!reset) setHistory(lines => [...lines, { who: "guest", text: message }]);
     chime();
@@ -95,11 +100,16 @@ export function Game() {
       while (true) { const { value, done } = await reader.read(); if (done) break; buffer += decoder.decode(value, { stream: true }); let end; while ((end = buffer.indexOf("\n\n")) >= 0) { const frame = buffer.slice(0, end); buffer = buffer.slice(end + 2); if (frame.startsWith("data: ")) applyEvent(JSON.parse(frame.slice(6))); } }
       if (reset) { setSheetOpen(false); quoteRef.current = null; }
     } catch (e) { if (!(e instanceof DOMException && e.name === "AbortError")) setError(e instanceof Error ? e.message : "对话连接中断了。真实订单请先查询状态，再继续操作。"); }
-    finally { busyRef.current = false; setBusy(false); setStatus(""); requestAbort.current = null; }
+    finally {
+      // Start the visible reply and its voice together, after the stream releases the session lease.
+      if (pendingReply.current) setReply(pendingReply.current);
+      pendingReply.current = null;
+      busyRef.current = false; setBusy(false); setStatus(""); requestAbort.current = null;
+    }
   };
   const tapCharacter = () => {
     if (entrance.stage !== "counter" || busyRef.current) return;
-    if (typingRef.current) { if (typingTimer.current) clearInterval(typingTimer.current); typingTimer.current = null; typingRef.current = false; setShown(reply.text); return; }
+    if (typingRef.current) { stopTyping(); setShown(reply.text); return; }
     setTapped(true); setTimeout(() => setTapped(false), 600); chime();
     const lines = ["嗯？客人需要什么？我只是稍微摆了一下尾巴，可没有在摸鱼哦。", "点单夹、优惠券，还有……我的午饭。咳，前两样已经准备好啦。", "客人慢慢挑就好。今天也要好好吃饭，鲸鱼娘负责认真记单～"];
     const next: AgentReply = { text: lines[Math.floor(Math.random() * lines.length)], expression: "smug", choices: session?.draft.store ? ["看看现在点了什么", "帮我找找优惠"] : greeting.choices };
@@ -112,22 +122,22 @@ export function Game() {
     setPanel(null);
   };
   const controls: { icon: IconName; label: string; action: () => void; active?: boolean; expanded?: boolean; badge?: number }[] = [
-    { icon: sound ? "sound" : "muted", label: sound ? "关闭提示音" : "开启提示音", action: () => setSound(v => !v) },
+    { icon: audio.enabled ? "sound" : "muted", label: audio.enabled ? "关闭声音" : "开启声音", action: audio.toggle },
     { icon: "history", label: "对话记录", action: () => openPanel("history") },
     { icon: "heart", label: "口味偏好", action: () => openPanel("preferences") },
     { icon: "clipboard", label: sheetOpen ? "收起点单夹" : "查看点单夹", action: () => { setSheetOpen(value => !value); chime(); }, expanded: sheetOpen, badge: session?.draft.items.reduce((sum, item) => sum + item.quantity, 0) || 0 },
     { icon: "settings", label: "设置", action: () => openPanel("settings"), active: config?.requiresVisitorKey && !keyValue },
   ];
-  return <main className={`game ${sheetOpen ? "sheet-visible" : ""}`} data-stage={entrance.stage} data-motion={entrance.reducedMotion ? "reduced" : "full"}>
+  return <main className={`game ${sheetOpen ? "sheet-visible" : ""}`} data-stage={entrance.stage} data-motion={entrance.reducedMotion ? "reduced" : "full"} onPointerDown={entrance.stage === "counter" ? audio.unlock : undefined} onKeyDownCapture={entrance.stage === "counter" ? audio.unlock : undefined}>
     <div className="counter-screen" aria-hidden={entrance.stage !== "counter"} inert={entrance.stage !== "counter"}>
     <div className="scene" aria-hidden="true"><div className="scene-image"/><div className="scene-warmth"/><div className="sun-dust dust-one"/><div className="sun-dust dust-two"/></div>
     <header className="topbar">
       <nav className="top-controls" aria-label="游戏设置">{controls.map(control => <button key={control.icon === "sound" || control.icon === "muted" ? "audio" : control.icon} className={`icon-button ${control.active ? "attention" : ""} ${control.expanded ? "is-selected" : ""}`} title={control.label} aria-label={control.label} aria-expanded={control.expanded} aria-controls={control.icon === "clipboard" ? "order-sheet" : undefined} aria-description={control.badge ? `已选 ${control.badge} 件餐品` : undefined} onClick={control.action}><Icon name={control.icon}/>{!!control.badge && <span className="control-count" aria-hidden="true">{control.badge > 99 ? "99+" : control.badge}</span>}</button>)}</nav>
     </header>
-    <button className={`character ${tapped ? "tapped" : ""}`} onClick={tapCharacter} aria-label="和鲸鱼娘打个招呼" title="点击，和鲸鱼娘打个招呼"><img src={`/art/character/${characterExpression}.webp`} alt="穿红黑白主题女仆制服的蓝发鲸鱼娘店员" draggable={false} fetchPriority="high"/></button>
+    <button className={`character ${tapped ? "tapped" : ""}`} onClick={tapCharacter} aria-label="和鲸鱼娘打个招呼" title="点击，和鲸鱼娘打个招呼"><img src={characterArt(characterExpression)} alt="穿红黑白主题女仆制服的蓝发鲸鱼娘店员" draggable={false} fetchPriority="high"/></button>
     {sheetOpen && <OrderSheet session={session} onClose={() => setSheetOpen(false)}/>}
     <section className="dialogue" ref={dialogueRef} tabIndex={-1} aria-label="与鲸鱼娘对话"><div className="dialogue-name"><Icon name="whale" size={22}/><strong>鲸鱼娘</strong><span>当班店员</span></div>
-      <div className="dialogue-content" aria-live="polite" onClick={() => { if (typingTimer.current) clearInterval(typingTimer.current); typingTimer.current = null; typingRef.current = false; setShown(reply.text); }}><p>{busy ? <span className="working-text">{status}<span className="typing-dots">···</span></span> : shown}<span className="continue-mark" aria-hidden="true">◆</span></p></div>
+      <div className="dialogue-content" aria-live="polite" onClick={() => { stopTyping(); setShown(reply.text); }}><p>{busy ? <span className="working-text">{status}<span className="typing-dots">···</span></span> : shown}<span className="continue-mark" aria-hidden="true">◆</span></p></div>
       {error && <div className="error-notice" role="alert">{error}<button aria-label="关闭错误提示" onClick={() => setError("")}><Icon name="close" size={14}/></button></div>}
       {session?.attempt?.paymentUrl && <a className="payment-link" href={session.attempt.paymentUrl} target="_blank" rel="noopener noreferrer">前往麦当劳官方支付<Icon name="external" size={14}/></a>}
       <div className="dialogue-actions"><div className="quick-choices" aria-label="快捷回应">{reply.choices.map(choice => <button key={choice} onClick={() => void send(choice)} disabled={busy}>{choice}<Icon name="chevron" size={12}/></button>)}</div>{session?.attempt?.status === "created" && <button className="new-order" disabled={busy} onClick={() => void send("", true)}><Icon name="reset" size={14}/>再来一单</button>}</div>

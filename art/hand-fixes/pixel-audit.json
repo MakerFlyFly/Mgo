@@ -1,0 +1,112 @@
+{
+  "source": "art/hand-fixes/imagegen-hand-edit.png",
+  "polygon": [
+    [
+      60,
+      359
+    ],
+    [
+      124,
+      331
+    ],
+    [
+      157,
+      330
+    ],
+    [
+      190,
+      344
+    ],
+    [
+      212,
+      371
+    ],
+    [
+      226,
+      400
+    ],
+    [
+      223,
+      421
+    ],
+    [
+      209,
+      432
+    ],
+    [
+      189,
+      409
+    ],
+    [
+      157,
+      416
+    ],
+    [
+      69,
+      412
+    ],
+    [
+      59,
+      390
+    ]
+  ],
+  "featherPixels": 3,
+  "report": [
+    {
+      "id": "happy",
+      "width": 1024,
+      "height": 1536,
+      "changedPixels": 6776,
+      "changedOutsideMask": 0,
+      "status": "Raised hand replaced; other hand and all other pixels retained"
+    },
+    {
+      "id": "neutral",
+      "width": 1024,
+      "height": 1536,
+      "changedPixels": 6787,
+      "changedOutsideMask": 0,
+      "status": "Raised hand replaced; other hand and all other pixels retained"
+    },
+    {
+      "id": "thinking",
+      "width": 1024,
+      "height": 1536,
+      "changedPixels": 6787,
+      "changedOutsideMask": 0,
+      "status": "Raised hand replaced; other hand and all other pixels retained"
+    },
+    {
+      "id": "smug",
+      "width": 1024,
+      "height": 1536,
+      "changedPixels": 6787,
+      "changedOutsideMask": 0,
+      "status": "Raised hand replaced; other hand and all other pixels retained"
+    },
+    {
+      "id": "surprised",
+      "width": 1024,
+      "height": 1536,
+      "changedPixels": 6790,
+      "changedOutsideMask": 0,
+      "status": "Raised hand replaced; other hand and all other pixels retained"
+    },
+    {
+      "id": "sorry",
+      "width": 1024,
+      "height": 1536,
+      "changedPixels": 6782,
+      "changedOutsideMask": 0,
+      "status": "Raised hand replaced; other hand and all other pixels retained"
+    },
+    {
+      "id": "handoff",
+      "width": 1024,
+      "height": 1536,
+      "changedPixels": 0,
+      "changedOutsideMask": 0,
+      "status": "Both hands audited; original retained"
+    }
+  ]
+}

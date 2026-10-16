@@ -22,7 +22,7 @@ try {
   const configuration = await (await fetch(`${base}/api/config`)).json();
   if (configuration.mode !== (personal ? "live" : "demo")) throw new Error("Unexpected runtime mode");
   if (!(await (await fetch(base)).text()).includes("鲸鱼娘")) throw new Error("The game page did not render");
-  if (!(await fetch(`${base}/art/character/happy.webp`)).ok) throw new Error("Character asset is missing");
+  if (!(await fetch(`${base}/art/character/v2/happy.webp`)).ok) throw new Error("Updated character asset is missing");
   const uid = execFileSync("docker", ["exec", name, "id", "-u"], { encoding: "utf8" }).trim();
   if (uid === "0") throw new Error("Container should not run as root");
   const firstResponse = await fetch(`${base}/api/session`), first = await firstResponse.json();

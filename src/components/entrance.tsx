@@ -1,10 +1,11 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Icon } from "./icon";
+import { characterArt } from "@/lib/character-art";
 
 type SceneStage = "initializing" | "exterior" | "entering" | "counter";
 const enteredKey = "mgo.entered.v1";
-const sceneImages = ["/art/entrance.webp", "/art/counter.webp", "/art/character/happy.webp", "/art/character/neutral.webp"];
+const sceneImages = ["/art/entrance.webp", "/art/counter.webp", characterArt("happy"), characterArt("neutral")];
 const ignoredEntryKeys = new Set(["Tab", "Escape", "Shift", "Control", "Alt", "Meta", "AltGraph", "CapsLock", "NumLock", "ScrollLock", "Fn", "FnLock", "ContextMenu", "Process", "Unidentified"]);
 const glints = [[12, 26, 3], [80, 20, 5], [26, 62, 4], [72, 78, 6], [46, 38, 3], [91, 54, 4], [8, 83, 5], [62, 11, 3], [35, 86, 4], [86, 41, 3], [54, 68, 6], [18, 45, 4]];
 
@@ -22,7 +23,7 @@ function preloadImage(source: string): Promise<void> {
   });
 }
 
-export function useEntrance() {
+export function useEntrance(onEnter?: () => void) {
   const [stage, setStage] = useState<SceneStage>("initializing");
   const [ready, setReady] = useState(false), [loadError, setLoadError] = useState(false);
   const [loadVersion, setLoadVersion] = useState(0), [reducedMotion, setReducedMotion] = useState(false);
@@ -58,8 +59,10 @@ export function useEntrance() {
 
   const enter = useCallback(() => {
     if (stage !== "exterior" || !ready || loadError || entering.current) return;
-    entering.current = true; setStage("entering");
-  }, [stage, ready, loadError]);
+    entering.current = true;
+    try { onEnter?.(); } catch { /* optional audio must never block entering */ }
+    setStage("entering");
+  }, [stage, ready, loadError, onEnter]);
   useEffect(() => {
     if (stage !== "exterior" || !ready || loadError) return;
     const onKeyDown = (event: KeyboardEvent) => {
