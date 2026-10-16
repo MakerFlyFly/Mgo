@@ -1,0 +1,16 @@
+services:
+  mgo:
+    build: .
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      APP_MODE: ${APP_MODE:-live}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-flash}
+      MCD_MCP_TOKEN: ${MCD_MCP_TOKEN:-}
+      MGO_DATA_DIR: /app/.data
+    volumes:
+      - mgo-data:/app/.data
+    restart: unless-stopped
+volumes:
+  mgo-data:

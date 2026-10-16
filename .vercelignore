@@ -1,0 +1,9 @@
+.env*
+.data
+tmp
+coverage
+node_modules
+.next
+.git
+*.db*
+art
