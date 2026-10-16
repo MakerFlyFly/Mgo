@@ -20,3 +20,7 @@ node scripts/benchmark-chat.mjs http://127.0.0.1:3000 tmp/chat-benchmark.json 3
 ```
 
 脚本读取本地 `.env.local`；个人模式使用服务端配置，模拟模式仅在请求内传递本地 DeepSeek Key。输出只包含场景名、首字/回复/总耗时及过程台词数量。默认两个场景都不会提交订单。
+
+## 新表情接入后的检查
+
+2026-10-17 用同一句问候再次测三次，首字为 1.482、0.914、0.991 秒，中位数 0.991 秒，仍保持约一秒；三次仅使用 `reply_to_guest`，没有点餐工具调用。小样本不用于判断几十毫秒的差异。记录见 [expression-chat-check.json](performance/expression-chat-check.json)。新图片在前端后台加载，不进入聊天发送或首字展示的等待链路。

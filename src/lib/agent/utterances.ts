@@ -1,10 +1,11 @@
 import type { AgentReply, Emit, Expression } from "../domain/types";
+import { expressionValues } from "../domain/types";
 import { topLevelStringPrefix } from "../streaming/json-text";
 import type { ModelToolDelta } from "./model";
 import type { AgentTrace } from "./trace";
 
 type Pending = { id: string; name: string; phase: "progress" | "final"; text: string; expression: Expression; started: boolean; ended: boolean };
-const expressions = new Set(["neutral", "happy", "thinking", "smug", "surprised", "sorry"]);
+const expressions = new Set<string>(expressionValues);
 export class UtteranceStream {
   private pending = new Map<number, Pending>();
   constructor(private emit: Emit, private remainingTools: number, private remainingNarrations: number, private holdFinal: boolean, private trace?: AgentTrace) {}

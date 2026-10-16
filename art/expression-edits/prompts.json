@@ -1,0 +1,75 @@
+{
+  "tool": "Built-in imagegen",
+  "date": "2026-10-17",
+  "useCase": "precise-object-edit",
+  "inputPreparation": {
+    "crop": {
+      "left": 340,
+      "top": 140,
+      "width": 220,
+      "height": 170
+    },
+    "resize": {
+      "width": 880,
+      "height": 680
+    },
+    "canvas": {
+      "width": 1024,
+      "height": 1024,
+      "left": 72,
+      "top": 172
+    }
+  },
+  "composition": "Only the bounded face/eye masks are composited back onto the repaired v2 masters. All other pixels and the complete original alpha channel are retained.",
+  "assets": [
+    {
+      "id": "shy",
+      "base": "neutral",
+      "target": "targets/neutral.png",
+      "generated": "generated/shy.png",
+      "prompt": "Use case: precise-object-edit.\nAsset type: aligned facial expression patch for the approved Mgo anime game character.\nInput image 1 is the EDIT TARGET, a close-up crop of the approved 18-year-old adult whale-girl clerk. Change ONLY the eyes, eyebrows, mouth and minimum necessary cheek skin for the requested expression.\nKeep exactly the same character identity, facial proportions, face silhouette, head tilt, nose, blue eye color, blue hair strands and bangs, eyelashes style, skin shading style, neck, collar, jewelry, ribbon, lighting and crop alignment. Do not move or rotate the head or resize the face. Preserve all hair and clothing, and keep the transparent padded canvas in the same positions. Original delicate anime linework and soft painted shading; not chibi.\nKeep exact 1024x1024 input composition, including the existing empty padding and the rectangular crop boundaries. No zoom, no expanded portrait, no new background. Preserve genuine RGBA transparency.\nNo added hearts, stars, sweat drops, text, tears, drool, accessories, hands or props. Make the emotion clearly readable at small game-sprite scale while retaining the approved art style.\nRequested expression: SHY / bashful: distinct warm pink blush on both cheeks and gently across the nose, gaze lowered a little, eyebrows softly drawn together and a small restrained closed-mouth smile, as if politely praised. Sweet and mildly embarrassed, not distressed. No seductive expression."
+    },
+    {
+      "id": "eager",
+      "base": "neutral",
+      "target": "targets/neutral.png",
+      "generated": "generated/eager.png",
+      "prompt": "Use case: precise-object-edit.\nAsset type: aligned facial expression patch for the approved Mgo anime game character.\nInput image 1 is the EDIT TARGET, a close-up crop of the approved 18-year-old adult whale-girl clerk. Change ONLY the eyes, eyebrows, mouth and minimum necessary cheek skin for the requested expression.\nKeep exactly the same character identity, facial proportions, face silhouette, head tilt, nose, blue eye color, blue hair strands and bangs, eyelashes style, skin shading style, neck, collar, jewelry, ribbon, lighting and crop alignment. Do not move or rotate the head or resize the face. Preserve all hair and clothing, and keep the transparent padded canvas in the same positions. Original delicate anime linework and soft painted shading; not chibi.\nKeep exact 1024x1024 input composition, including the existing empty padding and the rectangular crop boundaries. No zoom, no expanded portrait, no new background. Preserve genuine RGBA transparency.\nNo added hearts, stars, sweat drops, text, tears, drool, accessories, hands or props. Make the emotion clearly readable at small game-sprite scale while retaining the approved art style.\nRequested expression: EAGER anticipation about delicious food: visibly brighter, more open attentive blue eyes, gently raised brows, a small delighted open smile. Optimistic and expectant, distinct from the reference's calm smile. Keep normal pupil shape and normal eye highlights, no heart or star pupils."
+    },
+    {
+      "id": "pout",
+      "base": "neutral",
+      "target": "targets/neutral.png",
+      "generated": "generated/pout.png",
+      "prompt": "Use case: precise-object-edit.\nAsset type: aligned facial expression patch for the approved Mgo anime game character.\nInput image 1 is the EDIT TARGET, a close-up crop of the approved 18-year-old adult whale-girl clerk. Change ONLY the eyes, eyebrows, mouth and minimum necessary cheek skin for the requested expression.\nKeep exactly the same character identity, facial proportions, face silhouette, head tilt, nose, blue eye color, blue hair strands and bangs, eyelashes style, skin shading style, neck, collar, jewelry, ribbon, lighting and crop alignment. Do not move or rotate the head or resize the face. Preserve all hair and clothing, and keep the transparent padded canvas in the same positions. Original delicate anime linework and soft painted shading; not chibi.\nKeep exact 1024x1024 input composition, including the existing empty padding and the rectangular crop boundaries. No zoom, no expanded portrait, no new background. Preserve genuine RGBA transparency.\nNo added hearts, stars, sweat drops, text, tears, drool, accessories, hands or props. Make the emotion clearly readable at small game-sprite scale while retaining the approved art style.\nRequested expression: PLAYFUL POUT: slightly puffed cheeks and a small pursed pout, brows mildly lowered, eyes still friendly. A light tsundere joke, not anger or disgust; do not enlarge the overall face."
+    },
+    {
+      "id": "sleepy",
+      "base": "neutral",
+      "target": "targets/neutral.png",
+      "generated": "generated/sleepy.png",
+      "prompt": "Use case: precise-object-edit.\nAsset type: aligned facial expression patch for the approved Mgo anime game character.\nInput image 1 is the EDIT TARGET, a close-up crop of the approved 18-year-old adult whale-girl clerk. Change ONLY the eyes, eyebrows, mouth and minimum necessary cheek skin for the requested expression.\nKeep exactly the same character identity, facial proportions, face silhouette, head tilt, nose, blue eye color, blue hair strands and bangs, eyelashes style, skin shading style, neck, collar, jewelry, ribbon, lighting and crop alignment. Do not move or rotate the head or resize the face. Preserve all hair and clothing, and keep the transparent padded canvas in the same positions. Original delicate anime linework and soft painted shading; not chibi.\nKeep exact 1024x1024 input composition, including the existing empty padding and the rectangular crop boundaries. No zoom, no expanded portrait, no new background. Preserve genuine RGBA transparency.\nNo added hearts, stars, sweat drops, text, tears, drool, accessories, hands or props. Make the emotion clearly readable at small game-sprite scale while retaining the approved art style.\nRequested expression: GENTLY SLEEPY: visibly half-lidded relaxed eyes with visible blue pupils, softened brows and a tiny relaxed closed-mouth smile. Cozy and a little drowsy, not unconscious or upset. Do not change the head angle."
+    },
+    {
+      "id": "thinking-focus",
+      "base": "thinking",
+      "target": "targets/thinking.png",
+      "generated": "generated/thinking-focus.png",
+      "prompt": "Use case: precise-object-edit.\nAsset type: aligned facial expression patch for the approved Mgo anime game character.\nInput image 1 is the EDIT TARGET, a close-up crop of the approved 18-year-old adult whale-girl clerk. Change ONLY the eyes, eyebrows, mouth and minimum necessary cheek skin for the requested expression.\nKeep exactly the same character identity, facial proportions, face silhouette, head tilt, nose, blue eye color, blue hair strands and bangs, eyelashes style, skin shading style, neck, collar, jewelry, ribbon, lighting and crop alignment. Do not move or rotate the head or resize the face. Preserve all hair and clothing, and keep the transparent padded canvas in the same positions. Original delicate anime linework and soft painted shading; not chibi.\nKeep exact 1024x1024 input composition, including the existing empty padding and the rectangular crop boundaries. No zoom, no expanded portrait, no new background. Preserve genuine RGBA transparency.\nNo added hearts, stars, sweat drops, text, tears, drool, accessories, hands or props. Make the emotion clearly readable at small game-sprite scale while retaining the approved art style.\nRequested expression: FOCUSED THINKING while reading the counter register: blue pupils look noticeably toward the lower RIGHT of the image, eyebrows gently gathered in concentration, mouth small and closed. Calm and diligent, not angry. Preserve the original head pose."
+    },
+    {
+      "id": "thinking-ponder",
+      "base": "thinking",
+      "target": "targets/thinking.png",
+      "generated": "generated/thinking-ponder.png",
+      "prompt": "Use case: precise-object-edit.\nAsset type: aligned facial expression patch for the approved Mgo anime game character.\nInput image 1 is the EDIT TARGET, a close-up crop of the approved 18-year-old adult whale-girl clerk. Change ONLY the eyes, eyebrows, mouth and minimum necessary cheek skin for the requested expression.\nKeep exactly the same character identity, facial proportions, face silhouette, head tilt, nose, blue eye color, blue hair strands and bangs, eyelashes style, skin shading style, neck, collar, jewelry, ribbon, lighting and crop alignment. Do not move or rotate the head or resize the face. Preserve all hair and clothing, and keep the transparent padded canvas in the same positions. Original delicate anime linework and soft painted shading; not chibi.\nKeep exact 1024x1024 input composition, including the existing empty padding and the rectangular crop boundaries. No zoom, no expanded portrait, no new background. Preserve genuine RGBA transparency.\nNo added hearts, stars, sweat drops, text, tears, drool, accessories, hands or props. Make the emotion clearly readable at small game-sprite scale while retaining the approved art style.\nRequested expression: QUIET RECOLLECTION: blue pupils look noticeably toward the LEFT of the image, one eyebrow slightly lifted, a small neutral closed mouth. Curious and considering options, not confused or startled. Preserve the original head pose."
+    },
+    {
+      "id": "thinking-blink",
+      "base": "thinking",
+      "target": "targets/thinking.png",
+      "generated": "generated/thinking-blink.png",
+      "prompt": "Use case: precise-object-edit.\nAsset type: aligned facial expression patch for the approved Mgo anime game character.\nInput image 1 is the EDIT TARGET, a close-up crop of the approved 18-year-old adult whale-girl clerk. Change ONLY the eyes, eyebrows, mouth and minimum necessary cheek skin for the requested expression.\nKeep exactly the same character identity, facial proportions, face silhouette, head tilt, nose, blue eye color, blue hair strands and bangs, eyelashes style, skin shading style, neck, collar, jewelry, ribbon, lighting and crop alignment. Do not move or rotate the head or resize the face. Preserve all hair and clothing, and keep the transparent padded canvas in the same positions. Original delicate anime linework and soft painted shading; not chibi.\nKeep exact 1024x1024 input composition, including the existing empty padding and the rectangular crop boundaries. No zoom, no expanded portrait, no new background. Preserve genuine RGBA transparency.\nNo added hearts, stars, sweat drops, text, tears, drool, accessories, hands or props. Make the emotion clearly readable at small game-sprite scale while retaining the approved art style.\nRequested expression: ONE CLOSED-EYE BLINK FRAME: close BOTH eyes fully with soft natural eyelid lines. Keep the reference's eyebrows, small closed thinking mouth, nose, cheeks and face shape unchanged. No smile, no sleep symbols; this is a 120-millisecond blink, not a new pose."
+    }
+  ]
+}

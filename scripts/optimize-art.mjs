@@ -6,7 +6,8 @@ import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const characters = ["happy", "neutral", "thinking", "smug", "surprised", "sorry", "handoff"];
-const ids = ["counter", "entrance", ...characters.map(id => `character/${id}`), ...characters.map(id => `character/v2/${id}`)];
+const extra = ["shy", "eager", "pout", "sleepy", "thinking-focus", "thinking-ponder", "thinking-blink"];
+const ids = ["counter", "entrance", ...characters.map(id => `character/${id}`), ...characters.map(id => `character/v2/${id}`), ...extra.map(id => `character/v3/${id}`)];
 for (const id of ids) {
   const original = resolve(root, "public", "art", `${id}.png`), master = resolve(root, "art", "masters", `${id}.png`), output = resolve(root, "public", "art", `${id}.webp`);
   if (!original.startsWith(resolve(root, "public", "art") + sep) || !master.startsWith(resolve(root, "art", "masters") + sep)) throw new Error("Unexpected asset path");

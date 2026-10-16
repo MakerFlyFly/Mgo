@@ -10,7 +10,9 @@ const config: NextConfig = {
       { key: "Referrer-Policy", value: "no-referrer" },
       { key: "X-Frame-Options", value: "DENY" },
       { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-    ] }];
+    ] }, ...["v2", "v3"].map(version => ({ source: `/art/character/${version}/:path*`, headers: [
+      { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+    ] }))];
   },
 };
 export default config;

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { MgoError, publicError } from "../domain/errors";
 import { clipJson, dataOf, key, nameOf, object, walk } from "../domain/normalize";
 import { cartSchema, contextSchema, editable, mcdArguments, quoteOrder, setCart, setContext } from "../domain/orders";
-import { money } from "../domain/types";
+import { money, expressionValues } from "../domain/types";
 import type { AgentReply, Emit, JsonObject, ModelMessage, Session, ToolDefinition } from "../domain/types";
 import { mcpToolName, type OrderingProvider } from "../providers/types";
 import type { ModelClient } from "./model";
@@ -10,7 +10,7 @@ import { systemPrompt } from "./prompt";
 import { UtteranceStream } from "./utterances";
 import type { AgentTrace } from "./trace";
 
-const expressionSchema = z.enum(["neutral", "happy", "thinking", "smug", "surprised", "sorry"]);
+const expressionSchema = z.enum(expressionValues);
 const replySchema = z.object({ expression: expressionSchema, text: z.string().min(1).max(900), choices: z.array(z.string().min(1).max(65)).max(3) }).strict();
 const narrationSchema = z.object({ expression: expressionSchema, text: z.string().min(1).max(80) }).strict();
 const tool = (name: string, description: string, schema: JsonObject): ToolDefinition => ({ type: "function", function: { name, description, parameters: schema } });

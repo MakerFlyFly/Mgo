@@ -24,6 +24,13 @@
 | `public/art/character/v2/surprised.webp` | 惊讶表情，使用同一修复手部 |
 | `public/art/character/v2/sorry.webp` | 抱歉表情，使用同一修复手部 |
 | `public/art/character/v2/handoff.webp` | 递出点单夹的动作，双手审阅后保留原图 |
+| `public/art/character/v3/shy.webp` | 害羞：脸颊泛红、含蓄微笑 |
+| `public/art/character/v3/eager.webp` | 期待：明亮眼神、期待美食 |
+| `public/art/character/v3/pout.webp` | 鼓腮：友好的轻傲娇玩笑 |
+| `public/art/character/v3/sleepy.webp` | 困困：用于轻松闲聊 |
+| `public/art/character/v3/thinking-focus.webp` | 等待时认真看柜台机 |
+| `public/art/character/v3/thinking-ponder.webp` | 等待时侧目回想 |
+| `public/art/character/v3/thinking-blink.webp` | 约 120 毫秒的闭眼帧 |
 | `public/icon.svg` | 项目自己的鲸鱼图形图标，代码绘制 |
 
 原始 RGBA PNG 保存在 `art/masters/`，应用使用保留透明通道的 WebP 副本以减少下载体积，可运行 `node scripts/optimize-art.mjs` 重建。点单夹由 HTML/CSS 绘制，餐品与费用用真实应用状态排版，不使用烘焙进图片的虚假订单文字。界面字体使用设备自带字体，不依赖 Google Fonts。
@@ -39,5 +46,15 @@
 通过 Web Audio 播放原创合成元音，未使用游戏或角色录音。设计方法参考《蔚蓝》音效设计师 Kevin Regamey 的 [公开说明](https://threadreaderapp.com/scrolly/1416483583053602816)：元音共振峰变化、情绪音高与避免连续重复。音色按用户试听意见调整，最终选定 `light-girl-v5`，保留尖细、轻盈的电子感。DSP、节奏及试听重建说明见 [声音说明](../docs/audio/README.md)。
 
 门口待机浮光使用 CSS 绘制与动画：桌面 12 个、手机 6 个暖金色柔光粒子，启用“减少动态效果”时静止，背景与立绘复用已归档素材。
+
+## 2026-10-17 新情绪与等待素材
+
+使用内置 imagegen，以已修复手指的 v2 普通/思考立绘制作局部编辑目标，分别生成七张脸部素材；未使用外部 API CLI。编辑目标、选中的原始生成图和完整提示词保存在 [expression-edits/](expression-edits/)，提示词为 [prompts.json](expression-edits/prompts.json)。
+
+`node scripts/rebuild-expression-art.mjs` 将生成图对齐后按有限区域贴回原图。四种情绪只改脸部，三张等待素材只改眼周，避免眨眼时嘴和身体跳动。母版位于 `art/masters/character/v3/`，PNG 均为 1024×1536 RGBA；[像素报告](expression-edits/pixel-audit.json)验证七张母版在编辑范围外的像素改变数和整个原透明通道的改变数均为 0，原身体、服装及双手保留。WebP 是压缩副本。
+
+[表情对照](../docs/screenshots/expression-preview.jpg)第一排为新增四情绪，第二排为原有思考与三张等待素材。[素材预览动图](../docs/character-demo.gif)由这些母版编码，可用 `node scripts/build-character-demo.mjs` 重建；它是素材展示，不是网络响应耗时录像。
+
+版本化的 v2/v3 应用素材使用长期缓存。以后修改已发布的立绘时应使用新版本目录或新文件名，避免覆盖已缓存的同名文件。新素材由前端后台逐个加载和解码，不加入入店必需资源。
 
 本仓库作者对其可授予许可的新增 AI 素材部分适用项目 MIT 许可；不代表拥有或授予第三方角色形象、商标、原始参考作品的权利。麦当劳与 DeepSeek 相关标识仅用于非官方社区创作和参赛展示。本项目不宣称官方授权或背书。

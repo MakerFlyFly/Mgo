@@ -1,4 +1,5 @@
 import type { AgentReply, Expression } from "../domain/types";
+import { normalizeExpression } from "../domain/types";
 
 export type DialogueLine = { id: string; phase: "progress" | "final"; text: string; expression: Expression; complete: boolean; interrupted: boolean };
 type BufferedLine = Omit<DialogueLine, "text"> & { chars: string[]; shown: number };
@@ -28,12 +29,12 @@ export class DialoguePlayback {
   empty() { return this.lines.length === 0; }
   reset() { this.lines = []; }
   start(id: string, phase: "progress" | "final", expression: Expression) {
-    if (!this.has(id)) this.lines.push({ id, phase, expression, chars: [], shown: 0, complete: false, interrupted: false });
+    if (!this.has(id)) this.lines.push({ id, phase, expression: normalizeExpression(expression), chars: [], shown: 0, complete: false, interrupted: false });
   }
   append(id: string, text: string) { const line = this.lines.find(line => line.id === id); if (line && !line.complete) line.chars.push(...Array.from(text)); }
   finish(id: string, reply: AgentReply) {
     const line = this.lines.find(line => line.id === id); if (!line || line.complete) return;
-    line.chars = Array.from(reply.text); line.expression = reply.expression; line.complete = true;
+    line.chars = Array.from(reply.text); line.expression = normalizeExpression(reply.expression); line.complete = true;
     line.shown = Math.min(line.shown, line.chars.length);
   }
   interrupt(id?: string) {

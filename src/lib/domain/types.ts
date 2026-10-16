@@ -1,5 +1,9 @@
 export type AppMode = "demo" | "live";
-export type Expression = "neutral" | "happy" | "thinking" | "smug" | "surprised" | "sorry";
+export const expressionValues = ["neutral", "happy", "thinking", "smug", "surprised", "sorry", "shy", "eager", "pout", "sleepy"] as const;
+export type Expression = typeof expressionValues[number];
+export function normalizeExpression(value: unknown): Expression {
+  return typeof value === "string" && (expressionValues as readonly string[]).includes(value) ? value as Expression : "neutral";
+}
 export type JsonObject = Record<string, unknown>;
 export type Fulfillment = "pickup" | "delivery";
 

@@ -23,6 +23,8 @@ try {
   if (configuration.mode !== (personal ? "live" : "demo")) throw new Error("Unexpected runtime mode");
   if (!(await (await fetch(base)).text()).includes("鲸鱼娘")) throw new Error("The game page did not render");
   if (!(await fetch(`${base}/art/character/v2/happy.webp`)).ok) throw new Error("Updated character asset is missing");
+  const blink = await fetch(`${base}/art/character/v3/thinking-blink.webp`);
+  if (!blink.ok || !blink.headers.get("cache-control")?.includes("immutable")) throw new Error("New character asset or immutable cache header is missing");
   const uid = execFileSync("docker", ["exec", name, "id", "-u"], { encoding: "utf8" }).trim();
   if (uid === "0") throw new Error("Container should not run as root");
   const firstResponse = await fetch(`${base}/api/session`), first = await firstResponse.json();

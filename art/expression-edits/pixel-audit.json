@@ -1,0 +1,200 @@
+{
+  "faceMask": [
+    [
+      362,
+      190
+    ],
+    [
+      375,
+      166
+    ],
+    [
+      402,
+      156
+    ],
+    [
+      437,
+      140
+    ],
+    [
+      472,
+      140
+    ],
+    [
+      495,
+      153
+    ],
+    [
+      508,
+      180
+    ],
+    [
+      511,
+      207
+    ],
+    [
+      500,
+      231
+    ],
+    [
+      473,
+      255
+    ],
+    [
+      452,
+      270
+    ],
+    [
+      424,
+      265
+    ],
+    [
+      397,
+      249
+    ],
+    [
+      377,
+      228
+    ],
+    [
+      365,
+      210
+    ]
+  ],
+  "eyeMasks": [
+    [
+      [
+        362,
+        195
+      ],
+      [
+        371,
+        183
+      ],
+      [
+        396,
+        174
+      ],
+      [
+        415,
+        182
+      ],
+      [
+        420,
+        200
+      ],
+      [
+        404,
+        219
+      ],
+      [
+        377,
+        225
+      ],
+      [
+        361,
+        211
+      ]
+    ],
+    [
+      [
+        435,
+        164
+      ],
+      [
+        443,
+        148
+      ],
+      [
+        469,
+        139
+      ],
+      [
+        493,
+        146
+      ],
+      [
+        503,
+        158
+      ],
+      [
+        495,
+        182
+      ],
+      [
+        469,
+        192
+      ],
+      [
+        443,
+        186
+      ]
+    ]
+  ],
+  "featherPixels": 4,
+  "report": [
+    {
+      "id": "shy",
+      "base": "neutral",
+      "width": 1024,
+      "height": 1536,
+      "changedPixels": 13775,
+      "changedOutsideFace": 0,
+      "changedAlphaBytes": 0
+    },
+    {
+      "id": "eager",
+      "base": "neutral",
+      "width": 1024,
+      "height": 1536,
+      "changedPixels": 13738,
+      "changedOutsideFace": 0,
+      "changedAlphaBytes": 0
+    },
+    {
+      "id": "pout",
+      "base": "neutral",
+      "width": 1024,
+      "height": 1536,
+      "changedPixels": 13680,
+      "changedOutsideFace": 0,
+      "changedAlphaBytes": 0
+    },
+    {
+      "id": "sleepy",
+      "base": "neutral",
+      "width": 1024,
+      "height": 1536,
+      "changedPixels": 13752,
+      "changedOutsideFace": 0,
+      "changedAlphaBytes": 0
+    },
+    {
+      "id": "thinking-focus",
+      "base": "thinking",
+      "width": 1024,
+      "height": 1536,
+      "changedPixels": 4512,
+      "changedOutsideFace": 0,
+      "changedAlphaBytes": 0
+    },
+    {
+      "id": "thinking-ponder",
+      "base": "thinking",
+      "width": 1024,
+      "height": 1536,
+      "changedPixels": 4424,
+      "changedOutsideFace": 0,
+      "changedAlphaBytes": 0
+    },
+    {
+      "id": "thinking-blink",
+      "base": "thinking",
+      "width": 1024,
+      "height": 1536,
+      "changedPixels": 4448,
+      "changedOutsideFace": 0,
+      "changedAlphaBytes": 0
+    }
+  ]
+}

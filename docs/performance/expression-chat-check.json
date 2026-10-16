@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-17",
+  "samples": 3,
+  "scenario": "Same short greeting as streaming benchmark",
+  "medianFirstTextMs": 991,
+  "realOrdersCreated": false,
+  "results": [
+    {
+      "sample": 1,
+      "firstTextMs": 1482,
+      "totalMs": 1909,
+      "expression": "happy",
+      "tools": [
+        "reply_to_guest"
+      ]
+    },
+    {
+      "sample": 2,
+      "firstTextMs": 914,
+      "totalMs": 1399,
+      "expression": "happy",
+      "tools": [
+        "reply_to_guest"
+      ]
+    },
+    {
+      "sample": 3,
+      "firstTextMs": 991,
+      "totalMs": 1484,
+      "expression": "happy",
+      "tools": [
+        "reply_to_guest"
+      ]
+    }
+  ]
+}

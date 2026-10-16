@@ -9,6 +9,8 @@ const moods: Record<Expression, { pitch: number; gain: number }> = {
   neutral: { pitch: 1, gain: .94 }, happy: { pitch: 1.055, gain: 1 },
   thinking: { pitch: .97, gain: .85 }, smug: { pitch: 1.02, gain: .94 },
   surprised: { pitch: 1.09, gain: .98 }, sorry: { pitch: .95, gain: .78 },
+  shy: { pitch: 1, gain: .94 }, eager: { pitch: 1, gain: .94 },
+  pout: { pitch: 1, gain: .94 }, sleepy: { pitch: 1, gain: .94 },
 };
 export const voiceGain = .09;
 export const speechProfile = { version: "light-girl-v5", basePitchHz: 930, formantScale: 1.6 } as const;
@@ -62,7 +64,7 @@ export class SpeechCadence {
       if (syllable || time + .000001 < this.nextAt || !/[\p{L}\p{N}]/u.test(glyph)) continue;
       let vowel = ((glyph.codePointAt(0) || 0) + this.ordinal * 3) % vowels.length;
       if (vowel === this.previousVowel) vowel = (vowel + 1) % vowels.length;
-      const character = moods[mood];
+      const character = moods[mood] || moods.neutral;
       syllable = { vowel, variant: this.ordinal % 3, rate: character.pitch * (1 + (this.ordinal * 7 % 11 - 5) * .004), gain: character.gain };
       this.previousVowel = vowel; this.ordinal++; this.nextAt = time + syllableInterval;
     }

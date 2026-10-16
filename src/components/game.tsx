@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AgentReply, Expression, Preferences, Session, StreamEvent } from "@/lib/domain/types";
+import type { AgentReply, Preferences, Session, StreamEvent } from "@/lib/domain/types";
 import { tasteOptions } from "@/lib/domain/preferences";
 import { Icon, type IconName } from "./icon";
 import { Modal } from "./modal";
@@ -11,6 +11,7 @@ import { characterArt } from "@/lib/character-art";
 import { useDialogue } from "./use-dialogue";
 import { stageParts } from "@/lib/dialogue/playback";
 import { sseData } from "@/lib/streaming/sse";
+import { useCharacter } from "./use-character";
 
 type Config = { mode: "demo" | "live"; model: string; deepseekConfigured: boolean; mcdConfigured: boolean; requiresVisitorKey: boolean };
 type Line = { who: "guest" | "whale"; text: string };
@@ -26,6 +27,7 @@ export function Game() {
   const [error, setError] = useState(""), [keyValue, setKeyValue] = useState(""), [keyDraft, setKeyDraft] = useState("");
   const [panel, setPanel] = useState<"settings" | "history" | "preferences" | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false), [handoff, setHandoff] = useState(false);
+  const [turnId, setTurnId] = useState("");
   const [history, setHistory] = useState<Line[]>([{ who: "whale", text: greeting.text }]);
   const [preferences, setPreferences] = useState<Preferences>(initialPreferences), [prefDraft, setPrefDraft] = useState<Preferences>(initialPreferences);
   const [remember, setRemember] = useState(false), [tapped, setTapped] = useState(false);
@@ -35,7 +37,7 @@ export function Game() {
   const contentRef = useRef<HTMLDivElement | null>(null), followText = useRef(true);
   const dialogue = useDialogue(entrance.stage === "counter", audio);
   const hasShown = dialogue.lines.some(line => line.text);
-  const characterExpression: Expression | "handoff" = handoff ? "handoff" : busy && !hasShown ? "thinking" : dialogue.expression;
+  const character = useCharacter({ active: entrance.stage === "counter", busy, error: !!error, handoff, speaking: dialogue.speaking, finalStarted: dialogue.finalStarted, expression: dialogue.expression }, entrance.reducedMotion, turnId);
   useEffect(() => { sessionRef.current = session; }, [session]);
   const chime = audio.tap;
   const showLocal = useCallback((next: AgentReply) => { replyRef.current = next; setReply(next); dialogue.replace(next); }, [dialogue.replace]);
@@ -82,6 +84,7 @@ export function Game() {
     if (busyRef.current || (!message.trim() && !reset)) return;
     if (!config) { setError("柜台还在连接，请稍等一下。"); return; }
     if (config.requiresVisitorKey && !keyValue && !reset) { setKeyDraft(""); setPanel("settings"); return; }
+    const requestId = crypto.randomUUID(); setTurnId(requestId);
     dialogue.beginTurn(); followText.current = true;
     setReply(current => ({ ...current, choices: [] }));
     busyRef.current = true; setBusy(true); setError(""); setStatus("深度思考ing"); setText("");
@@ -90,7 +93,7 @@ export function Game() {
     const controller = new AbortController(); requestAbort.current = controller;
     try {
       const current = sessionRef.current;
-      const response = await fetch("/api/chat", { method: "POST", signal: controller.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, requestId: crypto.randomUUID(), ...(current?.quote ? { quoteId: current.quote.id } : {}), ...(config.mode === "demo" ? { apiKey: keyValue, ...(current ? { demoState: current } : {}) } : {}), preferences, ...(reset ? { reset: true } : {}) }) });
+      const response = await fetch("/api/chat", { method: "POST", signal: controller.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, requestId, ...(current?.quote ? { quoteId: current.quote.id } : {}), ...(config.mode === "demo" ? { apiKey: keyValue, ...(current ? { demoState: current } : {}) } : {}), preferences, ...(reset ? { reset: true } : {}) }) });
       if (!response.ok) { const data = await response.json(); if (data.code?.startsWith("DEEPSEEK")) setPanel("settings"); throw new Error(data.error || "这次对话没有送达，请稍后再试。"); }
       if (!response.body) throw new Error("连接没有返回对话内容。");
       let completed = false;
@@ -133,7 +136,7 @@ export function Game() {
     <header className="topbar">
       <nav className="top-controls" aria-label="游戏设置">{controls.map(control => <button key={control.icon === "sound" || control.icon === "muted" ? "audio" : control.icon} className={`icon-button ${control.active ? "attention" : ""} ${control.expanded ? "is-selected" : ""}`} title={control.label} aria-label={control.label} aria-expanded={control.expanded} aria-controls={control.icon === "clipboard" ? "order-sheet" : undefined} aria-description={control.badge ? `已选 ${control.badge} 件餐品` : undefined} onClick={control.action}><Icon name={control.icon}/>{!!control.badge && <span className="control-count" aria-hidden="true">{control.badge > 99 ? "99+" : control.badge}</span>}</button>)}</nav>
     </header>
-    <button className={`character ${tapped ? "tapped" : ""}`} onClick={tapCharacter} aria-label="和鲸鱼娘打个招呼" title="点击，和鲸鱼娘打个招呼"><img src={characterArt(characterExpression)} alt="穿红黑白主题女仆制服的蓝发鲸鱼娘店员" draggable={false} fetchPriority="high"/></button>
+    <button className={`character ${tapped ? "tapped" : ""}`} onClick={tapCharacter} aria-label="和鲸鱼娘打个招呼" title="点击，和鲸鱼娘打个招呼"><img src={characterArt(character.visual)} data-expression={character.visual} onError={character.onError} alt="穿红黑白主题女仆制服的蓝发鲸鱼娘店员" draggable={false} fetchPriority="high"/></button>
     {sheetOpen && <OrderSheet session={session} onClose={() => setSheetOpen(false)}/>}
     <section className="dialogue" ref={dialogueRef} tabIndex={-1} aria-label="与鲸鱼娘对话"><div className="dialogue-name"><Icon name="whale" size={22}/><strong>鲸鱼娘</strong><span>当班店员</span></div>
       <div className="dialogue-content" ref={contentRef} aria-live="polite" onScroll={e => { const node = e.currentTarget; followText.current = node.scrollHeight - node.scrollTop - node.clientHeight < 24; }} onClick={dialogue.skipReceived}>
